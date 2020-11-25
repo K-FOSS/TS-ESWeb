@@ -5,7 +5,7 @@
     "tsconfigRootDir": ".",
     "ecmaVersion": 2020
   },
-  "plugins": ["@typescript-eslint", "prettier"],
+  "plugins": ["react", "@typescript-eslint", "prettier"],
   "extends": [
     "standard",
     "plugin:@typescript-eslint/recommended",
@@ -17,7 +17,7 @@
   "rules": {
     // https://github.com/typescript-eslint/typescript-eslint/blob/master/packages/eslint-plugin/docs/rules/no-unused-vars.md
     "no-unused-vars": "off",
-    "node/shebang": ["off", {"convertPath": null}],
+    "node/shebang": ["off", { "convertPath": null }],
     "@typescript-eslint/no-unused-vars": [
       "error",
       {

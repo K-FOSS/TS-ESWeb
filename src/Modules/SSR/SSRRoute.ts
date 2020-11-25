@@ -1,7 +1,6 @@
 /* eslint-disable @typescript-eslint/ban-types */
 // src/Modules/SSR/SSRRoute.ts
 import { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
-import { ServerResponse } from 'http';
 import { HMRLoader } from '../../Utils/hmrLoader';
 import { Route } from '../../Library/Fastify';
 
@@ -17,10 +16,10 @@ export default class SSRRoute implements Route {
   public async handler(
     this: FastifyInstance,
     request: FastifyRequest,
-    reply: FastifyReply<ServerResponse>,
+    reply: FastifyReply,
   ): Promise<Function> {
     // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-    const { renderWeb } = await HMRLoader<typeof import('../../../Web/Server')>(
+    const { renderWeb } = await HMRLoader(
       '../../../Web/Server',
       import.meta.url,
     );

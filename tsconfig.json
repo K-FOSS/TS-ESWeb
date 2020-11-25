@@ -12,14 +12,20 @@
     "allowUnusedLabels": false,
     "strictPropertyInitialization": false,
 
-    "lib": ["ES2020", "DOM", "WebWorker"],
+    "allowJs": true,
+    "outDir": "dist",
 
     // Source Maps
-    "inlineSourceMap": true,
+    "inlineSourceMap": false,
+    "lib": ["ES2020", "DOM", "WebWorker"],
 
     // Features
     "experimentalDecorators": true,
-    "emitDecoratorMetadata": true
+    "noEmit": false,
+    "emitDecoratorMetadata": true,
+    "jsx": "react",
+    "reactNamespace": ""
   },
-  "include": ["src/**/*.ts"]
+  "include": ["src/**/*", "bin/**/*"],
+  "exclude": ["node_modules"]
 }
