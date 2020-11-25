@@ -1,3 +1,6 @@
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable @typescript-eslint/unbound-method */
 // src/Modules/TypeScript/TSConfig.ts
 import {
   CompilerOptions,
@@ -15,7 +18,7 @@ import { isAbsolute as isAbsolutePath, dirname as pathDirname } from 'path';
 
 let tsConfigCache: CompilerOptions;
 
-export function getTSConfig(modulePath: string) {
+export function getTSConfig(modulePath: string): CompilerOptions {
   if (tsConfigCache) return tsConfigCache;
 
   const tsConfigPath = findConfigFile(modulePath, sys.fileExists);

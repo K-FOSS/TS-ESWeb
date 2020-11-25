@@ -35,13 +35,15 @@ class WebModuleController extends BaseEventEmitter<WebModuleEventMap> {
    */
   public specifierMap = new Map<string, Set<string>>();
 
-  private createEventModule(filePath: string) {
+  private createEventModule(filePath: string): WebModuleEventModule {
+    // eslint-disable-next-line @typescript-eslint/unbound-method
     const getModule = this.getModule;
 
     class EventModule implements WebModuleEventModule {
       public filePath = filePath;
 
-      get webModule(): WebModule {
+      public get webModule(): WebModule {
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
         return getModule(this.filePath)!;
       }
     }
@@ -107,6 +109,7 @@ class WebModuleController extends BaseEventEmitter<WebModuleEventMap> {
   }
 
   public testIndex(filePath: string): string | undefined {
+    // eslint-disable-next-line prefer-regex-literals
     const indexMatcher = new RegExp(`(?<module>(?!/)[\\w,-]+)/index.js`, 'gm');
     const indexExec = indexMatcher.exec(filePath);
 

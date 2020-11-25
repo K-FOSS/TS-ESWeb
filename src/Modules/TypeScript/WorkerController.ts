@@ -12,7 +12,7 @@ import {
 } from './WorkerMessages';
 
 interface WorkerControllerEventMap {
-  fileTranspiled: any;
+  fileTranspiled: unknown;
   done: boolean;
 }
 
@@ -28,31 +28,29 @@ interface SpawnWorkersOptions {
   cache: boolean;
 }
 
-export class WorkerController extends BaseEventEmitter<
-  WorkerControllerEventMap
-> {
+export class WorkerController extends BaseEventEmitter<WorkerControllerEventMap> {
   public workers: WorkerThread[] = [];
   public started = false;
   public cache = true;
 
-  get threads() {
+  public get threads(): number {
     return this.workers.length;
   }
 
-  get lazyWorkers() {
+  public get lazyWorkers(): WorkerThread[] {
     return this.workers.filter(
       ({ ready, online }) => ready === true && online === true,
     );
   }
 
-  get lazyThreads() {
+  public get lazyThreads(): number {
     return this.lazyWorkers.length;
   }
 
   private pathHistory = new Set<string>();
   private jobQue = new Set<string>();
 
-  static async spawnWorkers(
+  public static async spawnWorkers(
     threadCount: number,
     { cache } = { cache: true } as SpawnWorkersOptions,
   ): Promise<WorkerController> {
@@ -64,8 +62,7 @@ export class WorkerController extends BaseEventEmitter<
       import.meta.url,
     );
 
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    for (const workerThread of Array(threadCount).fill(0)) {
+    for (const _workerThread of Array(threadCount).fill(0)) {
       const worker = spawnWorker(fileURLToPath(workerModulePath), {});
       controller.workers.push({
         workerThread: worker,
@@ -74,6 +71,7 @@ export class WorkerController extends BaseEventEmitter<
       });
 
       worker.on('online', () => {
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
         const workerThread = controller.workers.find(
           ({ workerThread }) => workerThread.threadId === worker.threadId,
         )!;
@@ -84,6 +82,7 @@ export class WorkerController extends BaseEventEmitter<
       worker.on('message', controller.handleWorkerMessage(worker));
 
       controller.on('done', () => {
+        // eslint-disable-next-line @typescript-eslint/no-floating-promises
         if (controller.cache) worker.terminate();
       });
     }
@@ -91,7 +90,7 @@ export class WorkerController extends BaseEventEmitter<
     return controller;
   }
 
-  addJob(filePath: string): void {
+  public addJob(filePath: string): void {
     if (this.pathHistory.has(filePath)) {
       return;
     } else if (this.jobQue.has(filePath)) {
@@ -106,8 +105,10 @@ export class WorkerController extends BaseEventEmitter<
     this.pathHistory.add(filePath);
   }
 
-  handleWorkerMessage(worker: Worker): (msg: TranspileWorkerMessage) => void {
-    return (msg) => {
+  public handleWorkerMessage(
+    worker: Worker,
+  ): (msg: TranspileWorkerMessage) => void {
+    return (msg): void => {
       switch (msg.type) {
         case TranspileWorkerMessageType.PUSH_DEPENDENCY:
           if (this.started === false) this.started = true;
@@ -133,6 +134,7 @@ export class WorkerController extends BaseEventEmitter<
 
           break;
         case TranspileWorkerMessageType.READY:
+          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
           this.workers.find(
             ({ workerThread }) => workerThread.threadId === worker.threadId,
           )!.ready = true;
@@ -142,11 +144,11 @@ export class WorkerController extends BaseEventEmitter<
     };
   }
 
-  removeJob(filePath: string): void {
+  public removeJob(filePath: string): void {
     this.jobQue.delete(filePath);
   }
 
-  forceAddJob(filePath: string): Promise<boolean> {
+  public forceAddJob(filePath: string): Promise<boolean> {
     this.jobQue.add(filePath);
 
     return new Promise((resolve) => {
@@ -154,7 +156,7 @@ export class WorkerController extends BaseEventEmitter<
     });
   }
 
-  startPolling(): void {
+  public startPolling(): void {
     webModuleController.on('newModule', (msg) => {
       if (this.jobQue.has(msg.filePath)) this.removeJob(msg.filePath);
     });
@@ -163,7 +165,9 @@ export class WorkerController extends BaseEventEmitter<
       const jobQueArray = Array.from(this.jobQue);
 
       if (this.lazyThreads > 0 && jobQueArray.length > 0) {
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
         const lazyWorker = this.lazyWorkers.pop()!;
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
         const filePath = jobQueArray.pop()!;
 
         if (webModuleController.getModule(filePath) && this.cache) {
@@ -174,6 +178,7 @@ export class WorkerController extends BaseEventEmitter<
         this.removeJob(filePath);
         lazyWorker.workerThread.postMessage(filePath);
 
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
         this.workers.find(
           ({ workerThread }) =>
             workerThread.threadId === lazyWorker.workerThread.threadId,
@@ -193,12 +198,12 @@ export class WorkerController extends BaseEventEmitter<
    * Starts transpiling a module graph starting with the entry
    * @param entrypoint Path to entryfile
    */
-  async start(filePath: string): Promise<boolean> {
+  public async start(filePath: string): Promise<boolean> {
     this.addJob(filePath);
 
     this.startPolling();
 
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
       if (this.cache) this.on('done', resolve);
     });
   }

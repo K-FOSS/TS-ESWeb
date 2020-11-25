@@ -23,12 +23,12 @@ class WebModuleFilter {
 @Resolver(() => WebModule)
 export class WebModuleResolver {
   @Query(() => [WebModule])
-  webModules(): WebModule[] {
+  public webModules(): WebModule[] {
     return Array.from(webModuleController.modules.values());
   }
 
   @Query(() => WebModule, { nullable: true })
-  webModule(
+  public webModule(
     @Arg('filter') { filePath, specifier }: WebModuleFilter,
   ): WebModule | undefined {
     if (filePath) {
@@ -36,28 +36,33 @@ export class WebModuleResolver {
     } else {
       const filePath = webModuleController.specifierTest.get(specifier);
 
-      console.log(`result for ${specifier} is filePath: ${filePath}`);
+      console.log(
+        `result for ${specifier} is filePath: ${filePath?.toString() || ''}`,
+      );
 
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
       return webModuleController.getModule(filePath!);
     }
   }
 
   @FieldResolver(() => [WebModule])
-  dependencies(@Root() webModule: WebModule): WebModule[] {
+  public dependencies(@Root() webModule: WebModule): WebModule[] {
     const deps = Array.from(webModule.dependencies);
 
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     return deps.flatMap(
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
       (moduleKey) => webModuleController.getModule(moduleKey)!,
     )!;
   }
 
   @FieldResolver(() => String)
-  specifiers(@Root() webModule: WebModule): string {
+  public specifiers(@Root() webModule: WebModule): string {
     return webModuleController.getSpecifiers(webModule.filePath);
   }
 
   @Query(() => Boolean)
-  async helloTest(): Promise<boolean> {
+  public helloTest(): boolean {
     console.log(
       Array.from(webModuleController.modules),
       Array.from(webModuleController.specifierMap),

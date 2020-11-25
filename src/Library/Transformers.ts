@@ -7,7 +7,7 @@ import {
   Bundle,
 } from 'typescript';
 import { findModuleFiles } from '../Utils/moduleFileFinder';
-import { cjsToEsmTransformerFactory } from '@wessberg/cjs-to-esm-transformer';
+import { cjsToEsmTransformerFactory } from 'cjstoesm';
 
 let customTransformers: CustomTransformers;
 
@@ -20,24 +20,24 @@ export abstract class Transformer {
    */
   public program: Program;
 
-  constructor(program: Program) {
+  public constructor(program: Program) {
     this.program = program;
   }
 
   /**
    * Transformer before the TypeScript ones (code has not been compiled)
    */
-  before?: TransformerFactory<SourceFile>;
+  public before?: TransformerFactory<SourceFile>;
 
   /**
    *  transformers after the TypeScript ones (code has been compiled)
    */
-  after?: TransformerFactory<SourceFile>;
+  public after?: TransformerFactory<SourceFile>;
 
   /**
    * Custom transformers to evaluate after built-in .d.ts transformations.
    */
-  afterDeclarations?: TransformerFactory<Bundle | SourceFile>;
+  public afterDeclarations?: TransformerFactory<Bundle | SourceFile>;
 }
 
 /**
@@ -46,8 +46,8 @@ export abstract class Transformer {
 class ExampleTransformer extends Transformer {
   public program: Transformer['program'];
 
-  after: Transformer['after'] = (context) => {
-    return (sourceFile: SourceFile) => {
+  public after: Transformer['after'] = () => {
+    return (sourceFile: SourceFile): SourceFile => {
       return sourceFile;
     };
   };
@@ -75,8 +75,11 @@ export async function getTransformers(
       afterDeclarations: [],
     };
 
+    /**
+     * For each found transformer module push all exported functions into our array
+     */
     transformerFiles.map((transformerExports) =>
-      Object.entries(transformerExports).map(([string, TransformerClass]) => {
+      Object.entries(transformerExports).map(([, TransformerClass]) => {
         const transformerClass = new TransformerClass(compilerProgram);
 
         for (const [key, value] of Object.entries(transformerClass) as [
@@ -86,7 +89,7 @@ export async function getTransformers(
           const transformerArray = customTransformers[key];
 
           if (transformerArray) {
-            transformerArray.push(value as any);
+            transformerArray.push(value as never);
           }
         }
 

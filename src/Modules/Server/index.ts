@@ -1,2 +1,2 @@
 // src/Modules/Server/index.ts
-export { createSSRServer } from './SSRServer';
+export { createSSRServer } from './createSSRServer';

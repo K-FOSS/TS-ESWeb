@@ -16,7 +16,7 @@ if (!parentPort) throw new Error(`Worker does not have parentPort open`);
  * Send the Worker ready for new file message to the Worker Controller
  */
 function sendReady(): void {
-  parentPort!.postMessage({
+  parentPort?.postMessage({
     type: TranspileWorkerMessageType.READY,
   } as TranspileWorkerMessage);
 }
@@ -39,13 +39,16 @@ async function transpilePath(filePath: string): Promise<void[]> {
 
   const webModulePromises: Promise<void>[] = [];
 
+  /**
+   * Overwrite the TypeScript write file function so we can intercept the module data
+   */
   compilierHost.writeFile = (
-    filePath,
+    _filePath,
     contents,
-    writeByteOrderMark,
-    onError,
+    _writeByteOrderMark,
+    _onError,
     sourceFiles,
-  ) => {
+  ): void => {
     if (sourceFiles) {
       if (!sourceFiles[0]) {
         throw new Error('No inital source file. Issue with TS Compile');
@@ -53,7 +56,7 @@ async function transpilePath(filePath: string): Promise<void[]> {
 
       webModulePromises.push(
         ...sourceFiles.map(async (sourceFile) => {
-          parentPort!.postMessage({
+          parentPort?.postMessage({
             type: TranspileWorkerMessageType.PUSH_OUTPUT,
             filePath: sourceFile.fileName,
             outputCode: contents,
@@ -68,7 +71,7 @@ async function transpilePath(filePath: string): Promise<void[]> {
 
               const modulePath = fileURLToPath(moduleURLPath);
 
-              parentPort!.postMessage({
+              parentPort?.postMessage({
                 type: TranspileWorkerMessageType.PUSH_DEPENDENCY,
                 filePath: modulePath,
                 specifier: moduleName,
@@ -98,10 +101,14 @@ async function transpilePath(filePath: string): Promise<void[]> {
   return Promise.all(webModulePromises);
 }
 
-parentPort.on('message', async (filePath: string) => {
+parentPort.on('message', (filePath: string) => {
   console.log(`transpiling path: ${filePath}`);
 
-  transpilePath(filePath).then(sendReady);
+  transpilePath(filePath)
+    .then(sendReady)
+    .catch(() => {
+      console.error('Testing');
+    });
 });
 
 sendReady();

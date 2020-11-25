@@ -6,10 +6,10 @@ import { resolve, dirname } from 'path';
 const pushDefault = ['react', 'react-dom', 'scheduler', 'scheduler/tracing'];
 
 export class ImportTransformer extends Transformer {
-  after: Transformer['before'] = (context) => {
+  public after: Transformer['before'] = (context) => {
     // const relativePathRegex = /^\.{1,2}[/]/;
 
-    return (sourceFile: ts.SourceFile) => {
+    return (sourceFile: ts.SourceFile): ts.SourceFile => {
       const visitor: ts.Visitor = (node) => {
         if (
           ts.isCallExpression(node) &&
@@ -72,7 +72,7 @@ export class ImportTransformer extends Transformer {
                   node.importClause.name.escapedText.toString(),
                 ),
               ),
-              node.importClause!.isTypeOnly,
+              node.importClause?.isTypeOnly,
             );
           }
 
@@ -106,6 +106,9 @@ export class ImportTransformer extends Transformer {
             specifier = node.moduleSpecifier.text;
           }
 
+          /**
+           * Return updated import path to use our Service Worker served path
+           */
           return ts.updateExportDeclaration(
             node,
             node.decorators,

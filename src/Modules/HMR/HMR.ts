@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-misused-promises */
 // src/Server/Modules/HMR/HMR.ts
 import { BaseEventEmitter } from '../../Utils/Events';
 import type { PathLike } from 'fs';
@@ -31,7 +32,7 @@ class HMRController extends BaseEventEmitter<HMREventsMap> {
   /**
    * Creates the fs watcher on all HMRed files
    */
-  async createWatcher(): Promise<void> {
+  public async createWatcher(): Promise<void> {
     const fs = await import('fs');
 
     const workerController = await WorkerController.spawnWorkers(2, {
@@ -39,14 +40,14 @@ class HMRController extends BaseEventEmitter<HMREventsMap> {
     });
     workerController.startPolling();
 
-    Array.from(this.watchedFiles).map(async (filePath) => {
+    Array.from(this.watchedFiles).map((filePath) => {
       const watcher = fs.watch(filePath);
 
-      console.log(`Watching ${filePath}`);
+      console.log(`Watching ${filePath.toString()}`);
 
       watcher.on(
         'change',
-        debounce((eventType: WatchedFileEvents, fileName: string | Buffer) => {
+        debounce((eventType: WatchedFileEvents) => {
           switch (eventType) {
             case 'change':
               this.emit('fileChanged', {
@@ -55,14 +56,16 @@ class HMRController extends BaseEventEmitter<HMREventsMap> {
           }
         }, 1500),
       );
+
+      return watcher;
     });
 
     this.on('fileChanged', async ({ filePath }) => {
       console.log(
-        `Spawned threads. Starting jobs with ${filePath} as the entrypoint`,
+        `Spawned threads. Starting jobs with ${filePath.toString()} as the entrypoint`,
       );
 
-      workerController
+      return workerController
         .forceAddJob(filePath.toString())
         .then(() => this.emit('moduleUpdated', filePath.toString()));
     });

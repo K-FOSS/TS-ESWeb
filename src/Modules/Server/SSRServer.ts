@@ -1,4 +1,6 @@
 // src/Modules/Server/SSRServer.ts
-interface SSRServerOptions {}
 
-export async function createSSRServer();
+/**
+ * TS-ESWeb SSR Server Controller
+ */
+export class SSRServer {}

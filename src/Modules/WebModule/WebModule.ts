@@ -14,7 +14,7 @@ export class WebModule {
 
   public dependencies = new Set<string>();
 
-  constructor(opts: Partial<WebModule> = {}) {
+  public constructor(opts: Partial<WebModule> = {}) {
     Object.assign(this, opts);
   }
 }

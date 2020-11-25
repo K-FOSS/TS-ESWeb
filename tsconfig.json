@@ -12,6 +12,8 @@
     "allowUnusedLabels": false,
     "strictPropertyInitialization": false,
 
+    "lib": ["ES2020", "DOM", "WebWorker"],
+
     // Source Maps
     "inlineSourceMap": true,
 

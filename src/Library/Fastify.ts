@@ -1,11 +1,12 @@
 // src/Library/Fastify.ts
 import fastify, {
   FastifyInstance,
-  RequestHandler,
+  RouteHandlerMethod,
   RouteOptions,
 } from 'fastify';
 import fastifyWS from 'fastify-websocket';
 import { findModuleFiles } from '../Utils/moduleFileFinder';
+import { timeout } from '../Utils/timeout';
 
 /**
  * Fastify Route
@@ -15,19 +16,20 @@ export abstract class Route {
    * Fastify Route Options
    * https://www.fastify.io/docs/latest/Routes/#routes-option
    */
-  options: Omit<RouteOptions, 'handler' | 'preHandler'>;
+  public options: Omit<RouteOptions, 'handler' | 'preHandler'>;
 
   /**
    * Fastify Route Handler
    */
-  abstract handler: RequestHandler;
+  abstract handler: RouteHandlerMethod;
 }
 
 /**
  * Example route so that the findModuleFiles type isn't messed up
  */
 export class ExampleRoute extends Route {
-  handler: Route['handler'] = async () => {
+  public handler: Route['handler'] = async () => {
+    await timeout(100);
     return 'example';
   };
 }
@@ -54,7 +56,7 @@ export async function createFastifyServer(): Promise<FastifyInstance> {
 
   // Register the fastify-websocket plugin
   // https://www.npmjs.com/package/fastify-websocket
-  webServer.register(fastifyWS);
+  await webServer.register(fastifyWS);
 
   /**
    * Get All Route Modules.
@@ -77,7 +79,7 @@ export async function createFastifyServer(): Promise<FastifyInstance> {
 /**
  * Creates a fastify Testing Chain https://www.fastify.io/docs/latest/Testing/
  */
-export async function createFastifyTestServer() {
+export async function createFastifyTestServer(): Promise<FastifyInstance> {
   const webServer = await createFastifyServer();
 
   return webServer;
