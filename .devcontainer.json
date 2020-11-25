@@ -1,21 +1,22 @@
 {
-  "name": "TS-Core Container",
+  "name": "TS-ESWeb Container",
   "dockerFile": "./Dockerfile.dev",
   "settings": {
     // This dev container does include /bin/bash if you prefer to use it instead of ash.
-    "terminal.integrated.shell.linux": "/bin/sh"
+    "terminal.integrated.shell.linux": "/bin/bash"
   },
-
   "remoteEnv": {
-    "SHELL": "/bin/sh"
+    "SHELL": "/bin/bash"
   },
-
-  "extensions": ["esbenp.prettier-vscode", "dbaeumer.vscode-eslint"],
+  "extensions": [
+    "esbenp.prettier-vscode",
+    "dbaeumer.vscode-eslint"
+  ],
   "remoteUser": "node",
   "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=cached",
   "workspaceFolder": "/workspace",
   "mounts": [
-    "source=ts-core-modules,target=/workspace/node_modules,type=volume"
+    "source=ts-esweb-modules,target=/workspace/node_modules,type=volume"
   ],
   "postCreateCommand": "sudo chown node node_modules && npm i"
 }
