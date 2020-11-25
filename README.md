@@ -1,6 +1,8 @@
-# K-FOSS/TS-Core Repository Template
+# K-FOSS/TS-ESWeb Repository Template
 
-This is a TypeScript project template.
+**STATUS: WIP**
+
+This will be the production ready NPM module variant of the [`@K-FOSS/TS-ESWeb-POC`](https://github.com/K-FOSS/TS-ESWeb-POC)
 
 ## Usage
 
@@ -19,13 +21,13 @@ Follow these steps to open this project in a container:
 2. To use this repository, you can either open the repository in an isolated Docker volume:
 
    - Press <kbd>F1</kbd> and select the **Remote-Containers: Open Repository in Container...** command.
-   - Enter `K-FOSS/TS-Core-Template`
+   - Enter `K-FOSS/TS-ESWeb`
    - The VS Code window (instance) will reload, clone the source code, and start building the dev container. A progress notification provides status updates.
 
    Or open a locally cloned copy of the code:
 
    - Clone this repository to your local filesystem.
-     - `git clone https://github.com/K-FOSS/TS-Core-Template.git`
+     - `git clone https://github.com/K-FOSS/TS-ESWeb.git`
    - Open the project folder in Visual Studio Code.
      - `code ./TS-Core-Template`
    - Reopen in Container
