@@ -106,8 +106,8 @@ parentPort.on('message', (filePath: string) => {
 
   transpilePath(filePath)
     .then(sendReady)
-    .catch(() => {
-      console.error('Testing');
+    .catch((err) => {
+      console.error('Transpile has errorer', err);
     });
 });
 

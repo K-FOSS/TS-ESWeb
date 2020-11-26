@@ -1,8 +1,8 @@
 /* eslint-disable @typescript-eslint/ban-types */
 // src/Modules/SSR/SSRRoute.ts
 import { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
-import { HMRLoader } from '../../Utils/hmrLoader';
 import { Route } from '../../Library/Fastify';
+import { ssrServer } from '../Server/createSSRServer';
 
 /**
  * Route to serve the rendered React SSR Routes
@@ -10,22 +10,18 @@ import { Route } from '../../Library/Fastify';
 export default class SSRRoute implements Route {
   public options: Route['options'] = {
     method: 'GET',
-    url: '/*',
+    url: '/Test',
   };
 
   public async handler(
     this: FastifyInstance,
     request: FastifyRequest,
     reply: FastifyReply,
-  ): Promise<Function> {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-    const { renderWeb } = await HMRLoader(
-      '../../../Web/Server',
-      import.meta.url,
-    );
+  ): Promise<string> {
+    reply.type('text/html');
 
-    await reply.type('text/html');
+    const appHTML = ssrServer.renderApp(request.url);
 
-    return renderWeb(request.req.url!);
+    return appHTML;
   }
 }

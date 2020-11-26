@@ -1,36 +1,21 @@
 // src/Modules/Server/createSSRServer.ts
-import { ReactFunction } from '../../Utils/React';
 import { timeout } from '../../Utils/timeout';
-import { SSRServer } from './SSRServer';
+import { ClientOptions, SSRServer } from './SSRServer';
 
 interface SSRServerOptions {
-  /**
-   * App
-   */
-  appComponent: ReactFunction;
-
-  /**
-   * Root Directory for Web/Client
-   *
-   * @example
-   * ```ts
-   * webRoot: path.resolve('./Web')
-   * ```
-   */
-  webRoot: string;
-
-  /**
-   * Entrypoint Path relative to @see webRoot
-   */
-  entrypoint: string;
+  options: ClientOptions;
 }
 
+export let ssrServer: SSRServer;
+
 export async function createSSRServer({
-  ...opts
+  options,
 }: SSRServerOptions): Promise<SSRServer> {
-  await timeout(100);
+  await timeout(50);
 
   console.log(`Creating SSR Server with specified configuration`);
 
-  return new SSRServer(opts);
+  ssrServer = new SSRServer(options);
+
+  return ssrServer;
 }

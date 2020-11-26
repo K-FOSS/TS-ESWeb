@@ -11,10 +11,12 @@ export default class WebModuleRoute implements Route {
 
   public async handler(
     this: FastifyInstance,
-    request: FastifyRequest,
+    request: FastifyRequest<{ Params: { '*': string } }>,
     reply: FastifyReply,
-  ): Promise<void> {
-    const filePath = request.params['*'] as string;
+  ): Promise<string> {
+    console.log('Request to static', request);
+
+    const filePath = request.params['*'];
     if (!filePath) {
       const err = (new Error() as unknown) as {
         statusCode: number;
@@ -39,8 +41,9 @@ export default class WebModuleRoute implements Route {
       throw err;
     }
 
-    await reply.type('text/javascript');
-    await reply.header('Service-Worker-Allowed', '/');
-    await reply.send(webModule.code);
+    reply.type('text/javascript');
+    reply.header('Service-Worker-Allowed', '/');
+
+    return webModule.code;
   }
 }

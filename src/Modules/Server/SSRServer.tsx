@@ -1,11 +1,14 @@
 // src/Modules/Server/SSRServer.ts
+import fastify, { FastifyInstance } from 'fastify';
 import { resolve } from 'path';
 import React from 'react';
 import { renderToString } from 'react-dom/server';
+import { createApolloServer } from '../../Library/Apollo';
+import { getRoutes, Route } from '../../Library/Fastify';
 import { ReactFunction } from '../../Utils/React';
 import { startWebTranspiler } from '../TypeScript';
 
-interface ClientOptions {
+export interface ClientOptions {
   appComponent: ReactFunction;
 
   /**
@@ -22,6 +25,11 @@ interface ClientOptions {
    * Entrypoint Path relative to @see webRoot
    */
   entrypoint: string;
+
+  /**
+   * Additional Fastify Routes
+   */
+  serverRoutes: Route[];
 }
 
 /**
@@ -35,10 +43,21 @@ export class SSRServer {
     appComponent: () => <div>HelloWorld</div>,
     entrypoint: 'Imports.ts',
     webRoot: 'Web',
+    serverRoutes: [],
   };
+
+  public webServer: FastifyInstance = fastify();
 
   public get entrypoint(): string {
     return resolve(this.options.webRoot, this.options.entrypoint);
+  }
+
+  /**
+   * Get Absolute Path from a relative path
+   * @param relativePath Relative Path to Web Root
+   */
+  public getFilePath(relativePath: string): string {
+    return resolve(this.options.webRoot, relativePath);
   }
 
   /**
@@ -55,13 +74,46 @@ export class SSRServer {
   public async startTranspiler(): Promise<void> {
     console.log(`Starting transpiler for ${this.entrypoint}`);
 
+    console.log(this.entrypoint, this.options.webRoot);
+
     await startWebTranspiler(this.entrypoint);
+  }
+
+  public async createFastifyServer(): Promise<FastifyInstance> {
+    /**
+     * Get All Route Modules.
+     */
+    const routes = await getRoutes();
+
+    /**
+     * For each Route Module in routes destructure handler and options and register as a webServer Route.
+     */
+    routes.map(({ handler, options }) => {
+      return this.webServer.route({
+        ...options,
+        handler,
+      });
+    });
+
+    /**
+     * Apollo GraphQL Server
+     */
+    const gqlServer = await createApolloServer();
+
+    const apiPlugin = gqlServer.createHandler();
+
+    /**
+     * Register the Apollo Server Routes into the Fastify instance
+     */
+    await this.webServer.register(apiPlugin);
+
+    return this.webServer;
   }
 
   public renderApp(path: string): string {
     const App = this.options.appComponent;
 
-    console.log(`Rendering for ${path}`);
+    console.log(`Rendering Path ${path}`);
 
     const appHTML = renderToString(<App />);
 
@@ -75,7 +127,9 @@ export class SSRServer {
       <script type="module">
       import { Workbox } from 'https://storage.googleapis.com/workbox-cdn/releases/5.1.2/workbox-window.prod.mjs';
   
-      const wb = new Workbox('/Static/ServiceWorker.ts', {
+      const wb = new Workbox('/Static/${this.getFilePath(
+        'ServiceWorker.ts',
+      )}', {
         scope: '/'
       });
   
@@ -95,7 +149,7 @@ export class SSRServer {
       const channel = new BroadcastChannel('sw-messages');
       channel.addEventListener('message', event => {
         if (event.data.type === 'READY') {
-          import('/Static//workspace/src/Web/Entry.ts')
+          import('/Static/${this.getFilePath('Client.tsx')}')
         }
       });
   
@@ -104,7 +158,7 @@ export class SSRServer {
       window.wb = wb;
   
   
-      wb.active.then(() => import('/Static//workspace/src/Web/Entry.ts'));
+      wb.active.then(() => import('/Static/${this.getFilePath('Client.tsx')}'));
       </script>
     </body>
     </html>`;
