@@ -17,7 +17,7 @@
   "devDependencies": {
     "@k-foss/ts-esnode": "^1.7.0",
     "@k-foss/ts-estests": "^1.0.6",
-    "@types/node": "14.14.6",
+    "@types/node": "14.14.20",
     "@types/react": "^17.0.0",
     "@types/react-dom": "^17.0.0",
     "@types/workbox-sw": "^4.3.1",
