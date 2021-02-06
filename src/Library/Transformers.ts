@@ -96,8 +96,6 @@ export async function getTransformers(
         return transformerClass;
       }),
     );
-  } else {
-    console.log('Cached');
   }
 
   return customTransformers;

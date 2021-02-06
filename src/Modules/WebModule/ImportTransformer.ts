@@ -16,15 +16,21 @@ export class ImportTransformer extends Transformer {
           node.expression.kind === ts.SyntaxKind.ImportKeyword
         ) {
           const argument = node.arguments[0];
+
           if (ts.isStringLiteral(argument)) {
-            return ts.updateCall(node, node.expression, node.typeArguments, [
-              ts.createStringLiteral(
-                `/Static/import?specifier=${resolve(
-                  dirname(sourceFile.fileName),
-                  argument.text,
-                )}`,
-              ),
-            ]);
+            return context.factory.updateCallExpression(
+              node,
+              node.expression,
+              node.typeArguments,
+              [
+                context.factory.createStringLiteral(
+                  `/Static/import?specifier=${resolve(
+                    dirname(sourceFile.fileName),
+                    argument.text,
+                  )}`,
+                ),
+              ],
+            );
           }
         }
 
@@ -47,6 +53,8 @@ export class ImportTransformer extends Transformer {
           // }
           const relativeTest = /^\.{0,2}[/]/gm;
 
+          console.log('Import declaration: ', node.moduleSpecifier.text);
+
           let specifier: string;
           if (relativeTest.test(node.moduleSpecifier.text)) {
             specifier = resolve(
@@ -54,7 +62,11 @@ export class ImportTransformer extends Transformer {
               node.moduleSpecifier.text,
             );
           } else {
-            specifier = node.moduleSpecifier.text;
+            if (node.moduleSpecifier.text === 'react/jsx-dev-runtime') {
+              specifier = 'react/cjs/react-jsx-dev-runtime.development';
+            } else {
+              specifier = node.moduleSpecifier.text;
+            }
           }
 
           let importClause: ts.ImportClause | undefined;
@@ -64,15 +76,15 @@ export class ImportTransformer extends Transformer {
             ts.isImportClause(node.importClause) &&
             node.importClause.name
           ) {
-            importClause = ts.updateImportClause(
+            importClause = context.factory.updateImportClause(
               node.importClause,
+              node.importClause?.isTypeOnly || false,
               undefined,
-              ts.createNamespaceImport(
-                ts.createIdentifier(
+              context.factory.createNamespaceImport(
+                context.factory.createIdentifier(
                   node.importClause.name.escapedText.toString(),
                 ),
               ),
-              node.importClause?.isTypeOnly,
             );
           }
 
@@ -80,12 +92,14 @@ export class ImportTransformer extends Transformer {
             importClause = node.importClause;
           }
 
-          return ts.updateImportDeclaration(
+          return context.factory.updateImportDeclaration(
             node,
             node.decorators,
             node.modifiers,
             importClause,
-            ts.createLiteral(`/Static/import?specifier=${specifier}`),
+            context.factory.createStringLiteral(
+              `/Static/import?specifier=${specifier}`,
+            ),
           );
         }
 
@@ -109,13 +123,15 @@ export class ImportTransformer extends Transformer {
           /**
            * Return updated import path to use our Service Worker served path
            */
-          return ts.updateExportDeclaration(
+          return context.factory.updateExportDeclaration(
             node,
             node.decorators,
             node.modifiers,
-            node.exportClause,
-            ts.createLiteral(`/Static/import?specifier=${specifier}`),
             node.isTypeOnly,
+            node.exportClause,
+            context.factory.createStringLiteral(
+              `/Static/import?specifier=${specifier}`,
+            ),
           );
         }
 

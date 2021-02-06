@@ -10,7 +10,11 @@
   },
   "extensions": [
     "esbenp.prettier-vscode",
-    "dbaeumer.vscode-eslint"
+    "dbaeumer.vscode-eslint",
+    "github.vscode-codeql",
+    "visualstudioexptteam.vscodeintellicode",
+    "eamodio.gitlens",
+    "redhat.vscode-yaml"
   ],
   "remoteUser": "node",
   "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=cached",

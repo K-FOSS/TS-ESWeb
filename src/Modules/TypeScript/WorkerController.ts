@@ -99,8 +99,6 @@ export class WorkerController extends BaseEventEmitter<WorkerControllerEventMap>
       return;
     }
 
-    console.log(`Adding ${filePath}`);
-
     this.jobQue.add(filePath);
     this.pathHistory.add(filePath);
   }
@@ -113,6 +111,8 @@ export class WorkerController extends BaseEventEmitter<WorkerControllerEventMap>
         case TranspileWorkerMessageType.PUSH_DEPENDENCY:
           if (this.started === false) this.started = true;
 
+          console.log(`Added: ${msg.filePath}`);
+
           this.addJob(msg.filePath);
 
           break;
@@ -121,8 +121,6 @@ export class WorkerController extends BaseEventEmitter<WorkerControllerEventMap>
 
           break;
         case TranspileWorkerMessageType.PUSH_OUTPUT:
-          console.debug(`PUSH_OUTPUT pushModule(${msg.filePath})`);
-
           webModuleController.pushModule(
             msg.filePath,
             new WebModule({

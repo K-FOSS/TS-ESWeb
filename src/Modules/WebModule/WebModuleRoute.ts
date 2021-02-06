@@ -14,8 +14,6 @@ export default class WebModuleRoute implements Route {
     request: FastifyRequest<{ Params: { '*': string } }>,
     reply: FastifyReply,
   ): Promise<string> {
-    console.log('Request to static', request);
-
     const filePath = request.params['*'];
     if (!filePath) {
       const err = (new Error() as unknown) as {

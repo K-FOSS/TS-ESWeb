@@ -12,3 +12,25 @@ export async function importServiceWorker(): Promise<
 > {
   return import('./ServiceWorker');
 }
+
+export async function importReactDOMServer(): Promise<
+  typeof import('react-dom/server')
+> {
+  return import('react-dom/server');
+}
+
+export async function importReactDOM(): Promise<typeof import('react-dom')> {
+  return import('react-dom');
+}
+
+export async function importReactJSXDev(): Promise<
+  typeof import('react/jsx-dev-runtime')
+> {
+  return import('react/jsx-dev-runtime');
+}
+
+export async function importReactJSX(): Promise<
+  typeof import('react/jsx-runtime')
+> {
+  return import('react/jsx-runtime');
+}

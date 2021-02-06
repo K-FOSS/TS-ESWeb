@@ -83,7 +83,6 @@ class WebModuleController extends BaseEventEmitter<WebModuleEventMap> {
       const execResult = moduleSubPath.exec(specifier);
 
       if (execResult?.groups?.module) {
-        console.log(`Setting ${execResult.groups.module} to ${filePath}`);
         this.setSpecifier(execResult.groups.module, filePath);
       }
 

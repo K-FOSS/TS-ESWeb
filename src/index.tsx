@@ -21,7 +21,7 @@ console.log('Creating Fastify Server');
 
 const fastifyServer = await ssrServer.createFastifyServer();
 
-await fastifyServer.listen(8080, '0.0.0.0');
+await fastifyServer.listen(8082, '0.0.0.0');
 
 console.log('Listening on port 8080');
 

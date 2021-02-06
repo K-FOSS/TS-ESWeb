@@ -1,22 +1,31 @@
 // src/Server/Utils/Workers/transpileWorker.ts
-import { parentPort } from 'worker_threads';
+import { readFileSync } from 'fs';
 import { dirname } from 'path';
-import {
-  TranspileWorkerMessageType,
-  TranspileWorkerMessage,
-} from './WorkerMessages';
 import ts from 'typescript';
-import { getTSConfig } from './TSConfig';
-import { pathToFileURL, fileURLToPath } from 'url';
+import { fileURLToPath, pathToFileURL } from 'url';
+import { parentPort } from 'worker_threads';
+import { createBrotliDecompress } from 'zlib';
 import { getTransformers } from '../../Library/Transformers';
+import { exportsHandler, objectExport, processNodeReplacement } from './Regex';
+import { getTSConfig } from './TSConfig';
+import {
+  TranspileWorkerMessage,
+  TranspileWorkerMessageType,
+} from './WorkerMessages';
 
-if (!parentPort) throw new Error(`Worker does not have parentPort open`);
+if (parentPort === null) {
+  throw new Error(`Worker does not have parentPort open`);
+}
 
 /**
  * Send the Worker ready for new file message to the Worker Controller
  */
 function sendReady(): void {
-  parentPort?.postMessage({
+  if (parentPort === null) {
+    throw new Error(`Worker does not have parentPort open`);
+  }
+
+  return parentPort.postMessage({
     type: TranspileWorkerMessageType.READY,
   } as TranspileWorkerMessage);
 }
@@ -29,8 +38,8 @@ async function transpilePath(filePath: string): Promise<void[]> {
   const rootDir = dirname(filePath);
 
   const tsConfig = getTSConfig(filePath);
-
-  const options = ts.getDefaultCompilerOptions();
+  const defaultOptions = ts.getDefaultCompilerOptions();
+  const options = { ...defaultOptions, ...tsConfig };
 
   const compilierHost = ts.createCompilerHost({
     ...options,
@@ -38,6 +47,37 @@ async function transpilePath(filePath: string): Promise<void[]> {
   });
 
   const webModulePromises: Promise<void>[] = [];
+
+  compilierHost.readFile = (fileName: string): string => {
+    const fileContents = readFileSync(fileName);
+
+    const exportVars: string[] = [];
+
+    /**
+     * https://regex101.com/r/uwAq1N/1
+     */
+
+    let moduleContents = fileContents
+      ?.toString()
+      .replace(processNodeReplacement, '$<coreCode>')
+      .replaceAll(exportsHandler, (test, todo, varName) => {
+        exportVars.push(varName);
+
+        return `var ${varName}`;
+      })
+      .replace(objectExport, (...args) => {
+        const { coreCode } = args[args.length - 1];
+
+        return coreCode.replaceAll('exports.', '');
+      });
+
+    exportVars.map(
+      (exportVar) =>
+        (moduleContents += `exports.${exportVar} = ${exportVar}\n`),
+    );
+
+    return moduleContents;
+  };
 
   /**
    * Overwrite the TypeScript write file function so we can intercept the module data
@@ -59,7 +99,7 @@ async function transpilePath(filePath: string): Promise<void[]> {
           parentPort?.postMessage({
             type: TranspileWorkerMessageType.PUSH_OUTPUT,
             filePath: sourceFile.fileName,
-            outputCode: contents,
+            outputCode: contents.replaceAll('exports.', ''),
           } as TranspileWorkerMessage);
 
           if (sourceFile.resolvedModules) {
@@ -69,6 +109,11 @@ async function transpilePath(filePath: string): Promise<void[]> {
                 pathToFileURL(sourceFile.fileName).href,
               );
 
+              console.log(moduleURLPath);
+
+              if (moduleURLPath.startsWith('node:')) {
+                continue;
+              }
               const modulePath = fileURLToPath(moduleURLPath);
 
               parentPort?.postMessage({
@@ -85,7 +130,10 @@ async function transpilePath(filePath: string): Promise<void[]> {
 
   const compilerProgram = ts.createProgram({
     rootNames: [filePath],
-    options: tsConfig,
+    options: {
+      ...options,
+      jsxFragmentFactory: 'Fragment',
+    },
     host: compilierHost,
   });
   compilerProgram.emit(
@@ -96,14 +144,10 @@ async function transpilePath(filePath: string): Promise<void[]> {
     await getTransformers(compilerProgram),
   );
 
-  console.log('Emitted program');
-
   return Promise.all(webModulePromises);
 }
 
 parentPort.on('message', (filePath: string) => {
-  console.log(`transpiling path: ${filePath}`);
-
   transpilePath(filePath)
     .then(sendReady)
     .catch((err) => {

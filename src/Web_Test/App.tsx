@@ -1,13 +1,16 @@
 // src/App.tsx
-import React, { Suspense } from 'react';
-
-const HomeRoute = React.lazy(() => import('./Routes/Home'));
+import React from 'react';
+import { Counter } from './Components/Counter/index';
 
 export function App(): React.ReactElement {
+  const sayHello = React.useCallback(() => console.log('HelloWorld'), []);
+
+  console.log('HelloWorld');
+
   return (
-    <Suspense fallback={<div>Loading</div>}>
-      <h1>HelloWorld</h1>
-      <HomeRoute />
-    </Suspense>
+    <>
+      <h1 onClick={sayHello}>HelloWorld</h1>
+      <Counter />
+    </>
   );
 }

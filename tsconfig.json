@@ -17,14 +17,13 @@
 
     // Source Maps
     "inlineSourceMap": false,
-    "lib": ["ES2020", "DOM", "WebWorker"],
+    "lib": ["ESNext", "DOM", "WebWorker"],
 
     // Features
     "experimentalDecorators": true,
     "noEmit": false,
     "emitDecoratorMetadata": true,
-    "jsx": "react",
-    "reactNamespace": ""
+    "jsx": "react-jsxdev"
   },
   "include": ["src/**/*", "bin/**/*"],
   "exclude": ["node_modules"]
