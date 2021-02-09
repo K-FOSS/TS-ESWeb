@@ -10,6 +10,7 @@ services:
   TSESWeb:
     image: ts-esweb:dev
     command: /bin/sh -c "while sleep 1000; do :; done"
+    user: node
     build:
       context: ./
       dockerfile: Dockerfile.dev
