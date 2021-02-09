@@ -18,6 +18,8 @@ if (!isRedisOptions(redisOptions)) {
   throw new Error('Invalid Redis Options provided to worker');
 }
 
+console.log('Fucker');
+
 const TSWorker = new Worker(
   'typescriptTranspile',
   async (job) => {

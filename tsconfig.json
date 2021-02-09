@@ -16,7 +16,8 @@
     "outDir": "dist",
 
     // Source Maps
-    "inlineSourceMap": false,
+    "inlineSourceMap": true,
+
     "lib": ["ESNext", "DOM", "WebWorker"],
 
     // Features

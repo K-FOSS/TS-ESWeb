@@ -9,7 +9,7 @@
     "test": "ts-estest ./src",
     "prepublishOnly": "npm run build",
     "build": "tsc -p ./tsconfig.build.json",
-    "start:debug": "node --loader @k-foss/ts-esnode --experimental-modules --experimental-import-meta-resolve --experimental-specifier-resolution=node --harmony-top-level-await ./",
+    "start:debug": "node --loader @k-foss/ts-esnode --experimental-modules --experimental-import-meta-resolve --experimental-specifier-resolution=node --enable-source-maps --harmony-top-level-await ./",
     "dev": "nodemon",
     "prettier": "prettier --config .prettierrc --check \"src/**/*ts\"",
     "lint": "eslint ./src --ext .js,.ts"
