@@ -3,11 +3,32 @@ import { resolve } from 'path';
 import 'reflect-metadata';
 import { logger } from './Library/Logger';
 import { createSSRServer } from './Modules/Server';
+import { WebAppManifest } from './Modules/WebAppManifest/WebAppManifest';
+import { WebAppManfiestController } from './Modules/WebAppManifest/WebAppManifestController';
 import { App } from './Web_Test/App';
 
 logger.info(`Starting TS-ESWeb`);
 
 logger.debug(`Creating TS-ESWeb SSR Server`);
+
+const manifest: WebAppManifest = {
+  name: 'HelloWorld',
+  backgroundColor: '#FFFFFF',
+  description: 'Hello World App1',
+  display: 'standalone',
+  shortName: 'Hello',
+  startURL: '/Test',
+  icons: [
+    {
+      src:
+        'https://www.shareicon.net/data/512x512/2016/07/10/119930_google_512x512.png',
+      type: 'image/png',
+      sizes: '512x512',
+    },
+  ],
+};
+
+await WebAppManfiestController.loadManifest(manifest);
 
 export const ssrServer = await createSSRServer({
   options: {

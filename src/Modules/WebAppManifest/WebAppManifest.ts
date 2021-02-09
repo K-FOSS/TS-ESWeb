@@ -1,6 +1,13 @@
 // src/Modules/WebAppManifest/WebAppManifest.ts
-import { IsDefined, IsString } from 'class-validator';
+import { Expose, Type } from 'class-transformer';
+import {
+  IsDefined,
+  IsHexColor,
+  IsString,
+  ValidateNested,
+} from 'class-validator';
 import { Token } from 'typedi';
+import { WebAppIcon } from './WebAppIcon';
 
 export class WebAppManifest {
   /**
@@ -13,6 +20,36 @@ export class WebAppManifest {
   @IsString()
   @IsDefined()
   public name: string;
+
+  @IsString()
+  @IsDefined()
+  @Expose({ name: 'short_name', toPlainOnly: true })
+  public shortName: string;
+
+  @IsString()
+  @IsDefined()
+  @Expose({ name: 'start_url', toPlainOnly: true })
+  public startURL: string;
+
+  @IsString()
+  @IsDefined()
+  public display: string;
+
+  @ValidateNested({
+    each: true,
+  })
+  @Type(() => WebAppIcon)
+  public icons: WebAppIcon[];
+
+  @IsString()
+  @IsDefined()
+  @IsHexColor()
+  @Expose({ name: 'background_color', toPlainOnly: true })
+  public backgroundColor: string;
+
+  @IsString()
+  @IsDefined()
+  public description: string;
 }
 
 export const webAppManifestToken = new Token<WebAppManifest>('WebAppManifest');

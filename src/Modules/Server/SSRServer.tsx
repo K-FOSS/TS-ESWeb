@@ -3,6 +3,7 @@ import fastify, { FastifyInstance } from 'fastify';
 import { resolve } from 'path';
 import React from 'react';
 import { renderToString } from 'react-dom/server';
+import Container from 'typedi';
 import { createApolloServer } from '../../Library/Apollo';
 import { getRoutes, Route } from '../../Library/Fastify';
 import { logger } from '../../Library/Logger';
@@ -86,15 +87,15 @@ export class SSRServer {
     /**
      * Get All Route Modules.
      */
-    const routes = await getRoutes();
+    const routes = await getRoutes(Container.of());
 
     /**
      * For each Route Module in routes destructure handler and options and register as a webServer Route.
      */
-    routes.map(({ handler, options }) => {
+    routes.map((route) => {
       return this.webServer.route({
-        ...options,
-        handler,
+        ...route.options,
+        handler: async (...params: unknown[]) => route.handler(...params),
       });
     });
 
