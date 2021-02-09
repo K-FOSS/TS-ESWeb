@@ -3,7 +3,6 @@ import fastify, {
   FastifyInstance,
   FastifyReply,
   FastifyRequest,
-  RouteHandlerMethod,
   RouteOptions,
 } from 'fastify';
 import fastifyWS from 'fastify-websocket';
@@ -86,7 +85,7 @@ export async function createFastifyServer(
   routes.map((route) => {
     return webServer.route({
       ...route.options,
-      handler: async (...params: unknown[]) => route.handler(...params),
+      handler: async (...params) => route.handler(...params),
     });
   });
 

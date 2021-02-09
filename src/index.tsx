@@ -3,6 +3,7 @@ import { resolve } from 'path';
 import 'reflect-metadata';
 import { logger } from './Library/Logger';
 import { createSSRServer } from './Modules/Server';
+import { ServerController } from './Modules/Server/ServerController';
 import { WebAppManifest } from './Modules/WebAppManifest/WebAppManifest';
 import { WebAppManfiestController } from './Modules/WebAppManifest/WebAppManifestController';
 import { App } from './Web_Test/App';
@@ -30,25 +31,29 @@ const manifest: WebAppManifest = {
 
 await WebAppManfiestController.loadManifest(manifest);
 
-export const ssrServer = await createSSRServer({
-  options: {
-    appComponent: App,
+export const server = await ServerController.createServer({
+  redis: {
+    hostname: 'Redis',
+  },
+  ssr: {
     webRoot: resolve('./src/Web_Test'),
     entrypoint: 'Imports.ts',
-    serverRoutes: [],
+    appComponent: App,
   },
 });
 
 logger.debug(`Starting the TS-ESWeb SSR Server Transpiler`);
 
-await ssrServer.startTranspiler();
+await server.startTypeScript();
+
+// await ssrServer.startTranspiler();
 
 logger.debug(`Creating the Fastify Server`);
 
-const fastifyServer = await ssrServer.createFastifyServer();
+// const fastifyServer = await ssrServer.createFastifyServer();
 
-const serverString = await fastifyServer.listen(8082, '0.0.0.0');
+// const serverString = await fastifyServer.listen(8082, '0.0.0.0');
 
-logger.debug(`Fastify server is listening ${serverString}`);
+// logger.debug(`Fastify server is listening ${serverString}`);
 
 export {};

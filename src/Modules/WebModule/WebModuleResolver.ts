@@ -8,6 +8,7 @@ import {
   Resolver,
   Root,
 } from 'type-graphql';
+import { Service } from 'typedi';
 import { logger } from '../../Library/Logger';
 import { WebModule } from './WebModule';
 import { webModuleController } from './WebModuleController';
@@ -22,6 +23,7 @@ class WebModuleFilter {
 }
 
 @Resolver(() => WebModule)
+@Service()
 export class WebModuleResolver {
   @Query(() => [WebModule])
   public webModules(): WebModule[] {
@@ -67,14 +69,14 @@ export class WebModuleResolver {
   @Query(() => Boolean)
   public helloTest(): boolean {
     logger.debug(
-      `WebModuleResolver.helloTest() Array.from(webModuleController.modules): ${Array.from(
-        webModuleController.modules,
+      `WebModuleResolver.helloTest() Array.from(webModuleController.modules): ${JSON.stringify(
+        Array.from(webModuleController.modules),
       )}
-    Array.from(webModuleController.specifierMap): ${Array.from(
-      webModuleController.specifierMap,
+    Array.from(webModuleController.specifierMap): ${JSON.stringify(
+      Array.from(webModuleController.specifierMap),
     )}
-    Array.from(webModuleController.specifierTest): ${Array.from(
-      webModuleController.specifierTest,
+    Array.from(webModuleController.specifierTest): ${JSON.stringify(
+      Array.from(webModuleController.specifierTest),
     )}`,
     );
 

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-floating-promises */
 /* eslint-disable @typescript-eslint/ban-types */
 // src/Modules/SSR/SSRRoute.ts
 import { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
@@ -15,6 +16,7 @@ export default class SSRRoute implements Route {
     url: '/Test',
   };
 
+  // eslint-disable-next-line @typescript-eslint/require-await
   public async handler(
     this: FastifyInstance,
     request: FastifyRequest,

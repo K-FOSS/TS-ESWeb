@@ -45,7 +45,7 @@ export class FastifyTestSuite extends TestSuite {
 
       return webServer.route({
         ...route.options,
-        handler: route.handler,
+        handler: async (...params) => route.handler(...params),
       });
     });
 

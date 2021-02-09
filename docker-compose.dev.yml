@@ -1,0 +1,26 @@
+version: '3.8'
+
+volumes:
+  modules:
+
+networks:
+  internalRedis:
+
+services:
+  TSESWeb:
+    image: ts-esweb:dev
+    command: /bin/sh -c "while sleep 1000; do :; done"
+    build:
+      context: ./
+      dockerfile: Dockerfile.dev
+    volumes:
+      # API Folders
+      - ./:/workspace:cached
+      - modules:/workspace/node_modules
+    networks:
+      - internalRedis
+
+  Redis:
+    image: redis:alpine3.12
+    networks:
+      - internalRedis

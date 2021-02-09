@@ -3,7 +3,7 @@ import fastify, { FastifyInstance } from 'fastify';
 import { resolve } from 'path';
 import React from 'react';
 import { renderToString } from 'react-dom/server';
-import Container from 'typedi';
+import Container, { Service } from 'typedi';
 import { createApolloServer } from '../../Library/Apollo';
 import { getRoutes, Route } from '../../Library/Fastify';
 import { logger } from '../../Library/Logger';
@@ -37,6 +37,7 @@ export interface ClientOptions {
 /**
  * TS-ESWeb SSR Server Controller
  */
+@Service()
 export class SSRServer {
   /**
    * Client Provided Options
