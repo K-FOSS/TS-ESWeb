@@ -2,6 +2,7 @@
 import { spawnWorker } from '@k-foss/ts-worker';
 import { fileURLToPath } from 'url';
 import { Worker } from 'worker_threads';
+import { logger } from '../../Library/Logger';
 import { BaseEventEmitter } from '../../Utils/Events';
 import { HMR } from '../HMR';
 import { WebModule } from '../WebModule';
@@ -111,7 +112,9 @@ export class WorkerController extends BaseEventEmitter<WorkerControllerEventMap>
         case TranspileWorkerMessageType.PUSH_DEPENDENCY:
           if (this.started === false) this.started = true;
 
-          console.log(`Added: ${msg.filePath}`);
+          logger.debug(
+            `WorkerController handleWorkerMessage(): added ${msg.filePath}`,
+          );
 
           this.addJob(msg.filePath);
 

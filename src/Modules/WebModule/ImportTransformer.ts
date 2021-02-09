@@ -1,7 +1,8 @@
 // src/Modules/WebModule/ImportTransformer
+import { dirname, resolve } from 'path';
 import * as ts from 'typescript';
+import { logger } from '../../Library/Logger';
 import { Transformer } from '../../Library/Transformers';
-import { resolve, dirname } from 'path';
 
 const pushDefault = ['react', 'react-dom', 'scheduler', 'scheduler/tracing'];
 
@@ -53,7 +54,9 @@ export class ImportTransformer extends Transformer {
           // }
           const relativeTest = /^\.{0,2}[/]/gm;
 
-          console.log('Import declaration: ', node.moduleSpecifier.text);
+          logger.debug(
+            `ImportTransformer Import declaration: ${node.moduleSpecifier.text}`,
+          );
 
           let specifier: string;
           if (relativeTest.test(node.moduleSpecifier.text)) {

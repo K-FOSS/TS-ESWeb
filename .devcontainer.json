@@ -6,7 +6,8 @@
     "terminal.integrated.shell.linux": "/bin/bash"
   },
   "remoteEnv": {
-    "SHELL": "/bin/bash"
+    "SHELL": "/bin/bash",
+    "LOG_MODE": "DEBUG"
   },
   "extensions": [
     "esbenp.prettier-vscode",

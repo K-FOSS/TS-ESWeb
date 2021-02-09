@@ -1,10 +1,13 @@
 // src/index.ts
 import { resolve } from 'path';
 import 'reflect-metadata';
-import { App } from './Web_Test/App';
+import { logger } from './Library/Logger';
 import { createSSRServer } from './Modules/Server';
+import { App } from './Web_Test/App';
 
-console.log('Starting transpiler');
+logger.info(`Starting TS-ESWeb`);
+
+logger.debug(`Creating TS-ESWeb SSR Server`);
 
 export const ssrServer = await createSSRServer({
   options: {
@@ -15,14 +18,16 @@ export const ssrServer = await createSSRServer({
   },
 });
 
+logger.debug(`Starting the TS-ESWeb SSR Server Transpiler`);
+
 await ssrServer.startTranspiler();
 
-console.log('Creating Fastify Server');
+logger.debug(`Creating the Fastify Server`);
 
 const fastifyServer = await ssrServer.createFastifyServer();
 
-await fastifyServer.listen(8082, '0.0.0.0');
+const serverString = await fastifyServer.listen(8082, '0.0.0.0');
 
-console.log('Listening on port 8080');
+logger.debug(`Fastify server is listening ${serverString}`);
 
 export {};

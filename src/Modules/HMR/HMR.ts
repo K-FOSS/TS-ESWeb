@@ -1,8 +1,9 @@
 /* eslint-disable @typescript-eslint/no-misused-promises */
 // src/Server/Modules/HMR/HMR.ts
-import { BaseEventEmitter } from '../../Utils/Events';
 import type { PathLike } from 'fs';
+import { logger } from '../../Library/Logger';
 import { debounce } from '../../Utils/debounce';
+import { BaseEventEmitter } from '../../Utils/Events';
 import { WorkerController } from '../TypeScript/WorkerController';
 
 /**
@@ -43,7 +44,9 @@ class HMRController extends BaseEventEmitter<HMREventsMap> {
     Array.from(this.watchedFiles).map((filePath) => {
       const watcher = fs.watch(filePath);
 
-      console.log(`Watching ${filePath.toString()}`);
+      logger.debug(
+        `HMRController.createWatcher() watching ${filePath.toString()}`,
+      );
 
       watcher.on(
         'change',
@@ -61,8 +64,8 @@ class HMRController extends BaseEventEmitter<HMREventsMap> {
     });
 
     this.on('fileChanged', async ({ filePath }) => {
-      console.log(
-        `Spawned threads. Starting jobs with ${filePath.toString()} as the entrypoint`,
+      logger.info(
+        `HMRController Spawned threads. Starting jobs with ${filePath.toString()} as the entrypoint`,
       );
 
       return workerController

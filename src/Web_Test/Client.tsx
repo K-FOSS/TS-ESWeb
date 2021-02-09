@@ -35,8 +35,6 @@
 
 import * as ReactDOM from 'react-dom';
 
-// console.log(`Hello Message: ${message}`);
-
 async function renderApp(): Promise<void> {
   const container = document.getElementById('app');
 

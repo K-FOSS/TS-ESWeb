@@ -1,8 +1,9 @@
 // src/Utils/moduleFileFinder.ts
 import { promises as fs } from 'fs';
-import { resolvePath } from './resolvePath';
 import { resolve } from 'path';
 import { pathToFileURL } from 'url';
+import { logger } from '../Library/Logger';
+import { resolvePath } from './resolvePath';
 
 type FileMatcher = RegExp;
 
@@ -16,6 +17,11 @@ export async function findModuleFiles<T>(
   fileMatcher: FileMatcher,
   rootDir: string = coreModulesDir,
 ): Promise<T[]> {
+  const timerKey = `findModuleFiles-${rootDir}`;
+
+  console.time(timerKey);
+  logger.debug(`findModuleFiles(${fileMatcher}, ${rootDir})`);
+
   async function processDirectory(directoryPath: string): Promise<T[]> {
     const directoryContents = await fs.readdir(directoryPath, {
       encoding: 'utf-8',
@@ -39,5 +45,11 @@ export async function findModuleFiles<T>(
     );
   }
 
-  return (await processDirectory(rootDir)).flat(500);
+  const results = await processDirectory(rootDir);
+
+  const flatResults = results.flat(50);
+
+  console.timeEnd(timerKey);
+
+  return flatResults;
 }

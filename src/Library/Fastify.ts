@@ -1,10 +1,13 @@
 // src/Library/Fastify.ts
 import fastify, {
   FastifyInstance,
+  FastifyReply,
+  FastifyRequest,
   RouteHandlerMethod,
   RouteOptions,
 } from 'fastify';
 import fastifyWS from 'fastify-websocket';
+import { Container, ContainerInstance } from 'typedi';
 import { findModuleFiles } from '../Utils/moduleFileFinder';
 import { timeout } from '../Utils/timeout';
 
@@ -21,7 +24,11 @@ export abstract class Route {
   /**
    * Fastify Route Handler
    */
-  abstract handler: RouteHandlerMethod;
+  abstract handler(
+    request: FastifyRequest,
+    reply: FastifyReply,
+  ): // eslint-disable-next-line @typescript-eslint/ban-types
+  Promise<void> | Promise<string | {}>;
 }
 
 /**
@@ -38,21 +45,31 @@ interface RouteModule {
   default: typeof ExampleRoute;
 }
 
-export async function getRoutes(): Promise<Route[]> {
+export async function getRoutes(
+  container: ContainerInstance,
+  rootDir?: string,
+): Promise<Route[]> {
   /**
    * Get all Modules under `Modules` that match `*Route.ts`
    */
-  const routeModules = await findModuleFiles<RouteModule>(/.*Route\.ts/);
+  const routeModules = await findModuleFiles<RouteModule>(
+    /.*Route\.(ts|js)x?/,
+    rootDir,
+  );
 
   // Destructure the default export from all matching route Modules, and construct the class
-  return routeModules.flatMap(({ default: RouteClass }) => new RouteClass());
+  return routeModules.flatMap(({ default: RouteClass }) =>
+    container.get(RouteClass),
+  );
 }
 
 /**
  * Create a Fastify Web Server
  */
-export async function createFastifyServer(): Promise<FastifyInstance> {
-  const webServer = fastify();
+export async function createFastifyServer(
+  container: ContainerInstance = Container.of(),
+): Promise<FastifyInstance> {
+  const webServer = fastify({});
 
   // Register the fastify-websocket plugin
   // https://www.npmjs.com/package/fastify-websocket
@@ -61,15 +78,15 @@ export async function createFastifyServer(): Promise<FastifyInstance> {
   /**
    * Get All Route Modules.
    */
-  const routes = await getRoutes();
+  const routes = await getRoutes(container);
 
   /**
    * For each Route Module in routes destructure handler and options and register as a webServer Route.
    */
-  routes.map(({ handler, options }) => {
+  routes.map((route) => {
     return webServer.route({
-      ...options,
-      handler,
+      ...route.options,
+      handler: async (...params: unknown[]) => route.handler(...params),
     });
   });
 
@@ -79,8 +96,10 @@ export async function createFastifyServer(): Promise<FastifyInstance> {
 /**
  * Creates a fastify Testing Chain https://www.fastify.io/docs/latest/Testing/
  */
-export async function createFastifyTestServer(): Promise<FastifyInstance> {
-  const webServer = await createFastifyServer();
+export async function createFastifyTestServer(
+  container?: ContainerInstance,
+): Promise<FastifyInstance> {
+  const webServer = await createFastifyServer(container);
 
   return webServer;
 }

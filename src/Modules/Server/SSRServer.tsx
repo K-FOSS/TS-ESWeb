@@ -5,6 +5,7 @@ import React from 'react';
 import { renderToString } from 'react-dom/server';
 import { createApolloServer } from '../../Library/Apollo';
 import { getRoutes, Route } from '../../Library/Fastify';
+import { logger } from '../../Library/Logger';
 import { ReactFunction } from '../../Utils/React';
 import { startWebTranspiler } from '../TypeScript';
 
@@ -72,9 +73,11 @@ export class SSRServer {
    * Start transpiling Modules from Imports
    */
   public async startTranspiler(): Promise<void> {
-    console.log(`Starting transpiler for ${this.entrypoint}`);
+    logger.info(`Starting transpiler for ${this.entrypoint}`);
 
-    console.log(this.entrypoint, this.options.webRoot);
+    logger.debug(
+      `SSRServer.startTranspiler() entrypoint: ${this.entrypoint} this.options.webRoot: ${this.options.webRoot}`,
+    );
 
     await startWebTranspiler(this.entrypoint);
   }
@@ -113,7 +116,7 @@ export class SSRServer {
   public renderApp(path: string): string {
     const App = this.options.appComponent;
 
-    console.log(`Rendering Path ${path}`);
+    logger.debug(`SSRServer.renderApp(${path})`);
 
     const appHTML = renderToString(<App />);
 

@@ -1,5 +1,6 @@
 // src/Server/Modules/TypeScript/WebCompiler.ts
 import { cpus } from 'os';
+import { logger } from '../../Library/Logger';
 import { WorkerController } from './WorkerController';
 
 interface TranspilerOptions {
@@ -23,8 +24,8 @@ export async function startWebTranspiler(
     opts.threadCount,
   );
 
-  console.log(
-    `Spawned threads. Starting jobs with ${filePath} as the entrypoint`,
+  logger.info(
+    `startWebTranspiler() Spawned threads. Starting jobs with ${filePath} as the entrypoint`,
   );
 
   await workerController.start(filePath);

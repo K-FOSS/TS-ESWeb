@@ -1,13 +1,14 @@
 // src/Modules/WebModule/WebModuleResolver.ts
 import {
-  Resolver,
-  Query,
-  FieldResolver,
-  Root,
   Arg,
-  InputType,
   Field,
+  FieldResolver,
+  InputType,
+  Query,
+  Resolver,
+  Root,
 } from 'type-graphql';
+import { logger } from '../../Library/Logger';
 import { WebModule } from './WebModule';
 import { webModuleController } from './WebModuleController';
 
@@ -36,8 +37,10 @@ export class WebModuleResolver {
     } else {
       const filePath = webModuleController.specifierTest.get(specifier);
 
-      console.log(
-        `result for ${specifier} is filePath: ${filePath?.toString() || ''}`,
+      logger.debug(
+        `WebModuleResolver.webModule() result for ${specifier} is filePath: ${
+          filePath?.toString() || ''
+        }`,
       );
 
       // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
@@ -63,11 +66,18 @@ export class WebModuleResolver {
 
   @Query(() => Boolean)
   public helloTest(): boolean {
-    console.log(
-      Array.from(webModuleController.modules),
-      Array.from(webModuleController.specifierMap),
-      Array.from(webModuleController.specifierTest),
+    logger.debug(
+      `WebModuleResolver.helloTest() Array.from(webModuleController.modules): ${Array.from(
+        webModuleController.modules,
+      )}
+    Array.from(webModuleController.specifierMap): ${Array.from(
+      webModuleController.specifierMap,
+    )}
+    Array.from(webModuleController.specifierTest): ${Array.from(
+      webModuleController.specifierTest,
+    )}`,
     );
+
     return true;
   }
 }

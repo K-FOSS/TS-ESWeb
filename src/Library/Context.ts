@@ -7,6 +7,7 @@ interface Context {
 /**
  * Get the GraphQL Context
  */
+// eslint-disable-next-line @typescript-eslint/require-await
 export async function getGQLContext(): Promise<Context> {
   /**
    * The answer to life and everything in the universe

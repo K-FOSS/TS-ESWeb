@@ -4,7 +4,7 @@ import { dirname } from 'path';
 import ts from 'typescript';
 import { fileURLToPath, pathToFileURL } from 'url';
 import { parentPort } from 'worker_threads';
-import { createBrotliDecompress } from 'zlib';
+import { logger } from '../../Library/Logger';
 import { getTransformers } from '../../Library/Transformers';
 import { exportsHandler, objectExport, processNodeReplacement } from './Regex';
 import { getTSConfig } from './TSConfig';
@@ -109,7 +109,9 @@ async function transpilePath(filePath: string): Promise<void[]> {
                 pathToFileURL(sourceFile.fileName).href,
               );
 
-              console.log(moduleURLPath);
+              logger.debug(
+                `transpilerWorker.ts resolvedModuleURL: ${moduleURLPath}`,
+              );
 
               if (moduleURLPath.startsWith('node:')) {
                 continue;

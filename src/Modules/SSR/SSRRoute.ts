@@ -1,12 +1,14 @@
 /* eslint-disable @typescript-eslint/ban-types */
 // src/Modules/SSR/SSRRoute.ts
 import { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
+import { Service } from 'typedi';
 import { Route } from '../../Library/Fastify';
 import { ssrServer } from '../Server/createSSRServer';
 
 /**
  * Route to serve the rendered React SSR Routes
  */
+@Service()
 export default class SSRRoute implements Route {
   public options: Route['options'] = {
     method: 'GET',

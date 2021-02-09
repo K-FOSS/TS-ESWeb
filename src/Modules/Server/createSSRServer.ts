@@ -1,4 +1,5 @@
 // src/Modules/Server/createSSRServer.ts
+import { logger } from '../../Library/Logger';
 import { timeout } from '../../Utils/timeout';
 import { ClientOptions, SSRServer } from './SSRServer';
 
@@ -13,7 +14,7 @@ export async function createSSRServer({
 }: SSRServerOptions): Promise<SSRServer> {
   await timeout(50);
 
-  console.log(`Creating SSR Server with specified configuration`);
+  logger.info(`Creating SSR Server with specified configuration`);
 
   ssrServer = new SSRServer(options);
 

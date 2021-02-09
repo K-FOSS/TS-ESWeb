@@ -1,14 +1,18 @@
+/* eslint-disable @typescript-eslint/no-floating-promises */
 // src/Server/Modules/WebModule/ModuleRoute.ts
 import { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
+import { Service } from 'typedi';
 import { Route } from '../../Library/Fastify';
 import { webModuleController } from './WebModuleController';
 
+@Service()
 export default class WebModuleRoute implements Route {
   public options: Route['options'] = {
     method: 'GET',
     url: '/Static/*',
   };
 
+  // eslint-disable-next-line @typescript-eslint/require-await
   public async handler(
     this: FastifyInstance,
     request: FastifyRequest<{ Params: { '*': string } }>,
