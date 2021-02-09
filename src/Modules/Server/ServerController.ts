@@ -21,7 +21,7 @@ export class ServerController {
    * @returns Promise resolving to newly configured ServerController class
    */
   public static async createServer(
-    options: ServerOptions,
+    options: Partial<ServerOptions>,
   ): Promise<ServerController> {
     logger.info(`ServerController.createServer()`);
 
@@ -49,5 +49,9 @@ export class ServerController {
     const workers = await this.typescriptController.createWorkers();
 
     logger.debug(`ServerController.startTypeScript() workers: `, workers);
+
+    await this.typescriptController.createTask('helloFucker');
+
+    logger.info('Done');
   }
 }

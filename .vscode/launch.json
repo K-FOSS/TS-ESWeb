@@ -8,6 +8,10 @@
       "protocol": "inspector",
       "port": 9229,
       "restart": true,
+      "outputCapture": "console",
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen",
+      "autoAttachChildProcesses": true,
 
       "cwd": "${workspaceFolder}",
       "runtimeExecutable": "npx",
