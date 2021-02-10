@@ -76,10 +76,18 @@ async function discoverModuleMap(
 
       const filePath = fileURLToPath(resolvePathURI);
 
+      let moduleSpecifier: string;
+      if (ts.isExternalModuleNameRelative(specifier)) {
+        moduleSpecifier = filePath;
+      } else {
+        moduleSpecifier = specifier;
+      }
+
       await moduleMapQue.add(
         workerInput.queName,
         plainToClass(ModuleMapWorkerJobInput, {
           filePath,
+          specifier: moduleSpecifier,
         }),
         {
           jobId: filePath,
