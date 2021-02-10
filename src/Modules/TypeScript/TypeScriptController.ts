@@ -36,6 +36,12 @@ export class TypeScriptController {
       `TypeScriptController.createModuleMapWorkers() workerPathURI: ${workerPathURI} containerId: ${this.options.serverId}`,
     );
 
+    await this.moduleMapQue.queue.clean(0, 1000);
+
+    this.moduleMapQue.queueEvents.on('completed', async (msg) => {
+      console.log('Module Map Que Recieved', msg);
+    });
+
     for (const _workerThread of Array(cpus().length - 1).fill(0)) {
       logger.info('Spawning worker');
 
@@ -88,10 +94,6 @@ export class TypeScriptController {
     const job = this.moduleMapQue.queue.add(
       this.moduleMapQue.queue.name,
       jobInput,
-    );
-
-    logger.info(
-      `TypeScriptController.createModuleMapTask(${JSON.stringify(jobInput)})`,
     );
 
     return job;

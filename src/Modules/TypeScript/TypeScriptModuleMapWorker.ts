@@ -2,7 +2,7 @@
 import { getWorkerData } from '@k-foss/ts-worker';
 import '../../Utils/Setup';
 import { plainToClass } from 'class-transformer';
-import { Worker } from 'bullmq';
+import { Queue, Worker } from 'bullmq';
 import { logger } from '../../Library/Logger';
 import { WorkerInput } from './WorkerInput';
 import { validateOrReject } from 'class-validator';
@@ -11,23 +11,32 @@ import * as ts from 'typescript';
 import { ModuleMapWorkerJobInput } from './ModuleMapWorkerJobInput';
 import { dirname } from 'path';
 import { getTSConfig } from './TSConfig';
+import { fileURLToPath, pathToFileURL } from 'url';
 
 const data = getWorkerData(import.meta.url);
-
-logger.debug(`TypeScriptWorker`, data);
 
 const workerInput = plainToClass(WorkerInput, <WorkerInput>{
   redisOptions: JSON.parse(data.redisOptions) as RedisOptions,
   queName: data?.queName as string,
 });
 
-logger.debug(`TypeScriptModuleMapWorker: `, workerInput);
-
 await validateOrReject(workerInput);
+
+const moduleMapQue = new Queue(workerInput.queName, {
+  connection: {
+    host: workerInput.redisOptions.hostname,
+  },
+});
+
+interface ModuleMap {
+  filePath: string;
+
+  importedModules: string[];
+}
 
 async function discoverModuleMap(
   moduleInput: ModuleMapWorkerJobInput,
-): Promise<string> {
+): Promise<ModuleMap> {
   logger.debug(`discoverModuleMap(${JSON.stringify(moduleInput)})`);
 
   const rootDir = dirname(moduleInput.filePath);
@@ -56,14 +65,35 @@ async function discoverModuleMap(
     throw new Error('Invalid Source File');
   }
 
-  for (const [specifier, resovledModule] of sourceFile.resolvedModules) {
-    console.log(
-      `Resolved Module: specifier: ${specifier} resolved:`,
-      resovledModule,
-    );
-  }
+  const resolvedArray = Array.from(sourceFile.resolvedModules);
 
-  return `console.log('helloWorld')`;
+  const importedModules = await Promise.all(
+    resolvedArray.map(async ([specifier]) => {
+      const resolvePathURI = await import.meta.resolve(
+        specifier,
+        pathToFileURL(moduleInput.filePath).href,
+      );
+
+      const filePath = fileURLToPath(resolvePathURI);
+
+      await moduleMapQue.add(
+        workerInput.queName,
+        plainToClass(ModuleMapWorkerJobInput, {
+          filePath,
+        }),
+        {
+          jobId: filePath,
+        },
+      );
+
+      return filePath;
+    }),
+  );
+
+  return {
+    filePath: moduleInput.filePath,
+    importedModules,
+  };
 }
 
 const transpilerWorker = new Worker<ModuleMapWorkerJobInput>(
@@ -75,9 +105,7 @@ const transpilerWorker = new Worker<ModuleMapWorkerJobInput>(
 
     logger.info(`TypeScript Module Map Worker: filePath: ${jobInput.filePath}`);
 
-    const transformedModule = await discoverModuleMap(jobInput);
-
-    logger.debug(`transpilerWorker transformedModule: ${transformedModule}`);
+    return discoverModuleMap(jobInput);
   },
   {
     connection: {
@@ -87,4 +115,4 @@ const transpilerWorker = new Worker<ModuleMapWorkerJobInput>(
   },
 );
 
-logger.debug(`TypeScriptTranspilerWorker.ts worker: `, transpilerWorker);
+logger.debug(`TypeScriptTranspilerWorker.ts worker: `, transpilerWorker.name);
