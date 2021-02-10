@@ -2,7 +2,8 @@
 import { plainToClass } from 'class-transformer';
 import { validateOrReject } from 'class-validator';
 import hyperid from 'hyperid';
-import { ContainerInstance, Service, Container, Inject } from 'typedi';
+import { Service, Container, Inject } from 'typedi';
+import { fileURLToPath } from 'url';
 import { logger } from '../../Library/Logger';
 import { TypeScriptController } from '../TypeScript/TypeScriptController';
 import { ServerOptions, serverOptionsToken } from './ServerOptions';
@@ -43,23 +44,43 @@ export class ServerController {
 
   public async startTypeScript(): Promise<void> {
     logger.info(
-      `ServerController.startTypeScript() starting TypeScript Workers`,
+      `ServerController.startTypeScript() starting TypeScript Module Map`,
     );
 
-    const workers = await this.typescriptController.createWorkers();
-
-    logger.debug(`ServerController.startTypeScript() workers: `, workers);
+    const workers = await this.typescriptController.createModuleMapWorkers();
 
     const randomArray = [...Array(10).fill(0)];
 
     await Promise.all(
-      randomArray.map(() => {
+      randomArray.map(async () => {
         logger.info(`Adding a task to workers`);
 
-        return this.typescriptController.createTask('helloFucker');
+        return this.typescriptController.createModuleMapTask({
+          filePath: fileURLToPath(
+            await import.meta.resolve('../../Web_Test/Imports.ts'),
+          ),
+        });
       }),
     );
 
-    logger.info('Done');
+    // const workers = await this.typescriptController.createTranspilerWorkers();
+
+    // logger.debug(`ServerController.startTypeScript() workers: `, workers);
+
+    // const randomArray = [...Array(10).fill(0)];
+
+    // await Promise.all(
+    //   randomArray.map(async () => {
+    //     logger.info(`Adding a task to workers`);
+
+    //     return this.typescriptController.createTranspilerTask({
+    //       filePath: fileURLToPath(
+    //         await import.meta.resolve('../../Web_Test/Imports.ts'),
+    //       ),
+    //     });
+    //   }),
+    // );
+
+    // logger.info('Done');
   }
 }

@@ -1,2 +1,7 @@
 // src/Modules/TypeScript/TranspilerWorkerJobInput.ts
-import {} from 'class-validator'
+import { IsString } from 'class-validator';
+
+export class TranspilerWorkerJobInput {
+  @IsString()
+  public filePath: string;
+}

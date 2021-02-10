@@ -4,15 +4,16 @@ import '../../Utils/Setup';
 import { plainToClass } from 'class-transformer';
 import { Worker } from 'bullmq';
 import { logger } from '../../Library/Logger';
-import { TranspilerWorkerInput } from './TranspilerWorkerInput';
+import { WorkerInput } from './WorkerInput';
 import { validateOrReject } from 'class-validator';
 import { RedisOptions } from '../Redis/RedisOptions';
+import { TranspilerWorkerJobInput } from './TranspilerWorkerJobInput';
 
 const data = getWorkerData(import.meta.url);
 
 logger.debug(`TypeScriptWorker`, data);
 
-const workerInput = plainToClass(TranspilerWorkerInput, <TranspilerWorkerInput>{
+const workerInput = plainToClass(WorkerInput, <WorkerInput>{
   redisOptions: JSON.parse(data.redisOptions) as RedisOptions,
   queName: data?.queName as string,
 });
@@ -27,12 +28,16 @@ async function transformFile(filePath: string): Promise<string> {
   return `console.log('helloWorld')`;
 }
 
-const transpilerWorker = new Worker<string>(
+const transpilerWorker = new Worker<TranspilerWorkerJobInput>(
   workerInput.queName,
   async (job) => {
-    logger.info(`TypeScript Transpiler Worker: filePath: ${job.data}`);
+    const jobInput = plainToClass(TranspilerWorkerJobInput, job.data);
 
-    const transformedModule = await transformFile(job.data);
+    await validateOrReject(jobInput);
+
+    logger.info(`TypeScript Transpiler Worker: filePath: ${jobInput.filePath}`);
+
+    const transformedModule = await transformFile(jobInput.filePath);
 
     logger.debug(`transpilerWorker transformedModule: ${transformedModule}`);
   },

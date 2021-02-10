@@ -1,9 +1,9 @@
-// src/Modules/TypeScript/TranspilerWorkerInput.ts
+// src/Modules/TypeScript/WorkerInput.ts
 import { Type } from 'class-transformer';
 import { ValidateNested, IsString } from 'class-validator';
 import { RedisOptions } from '../Redis/RedisOptions';
 
-export class TranspilerWorkerInput {
+export class WorkerInput {
   @ValidateNested()
   @Type(() => RedisOptions)
   public redisOptions: RedisOptions;
