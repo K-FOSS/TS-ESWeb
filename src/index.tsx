@@ -31,8 +31,6 @@ const manifest: WebAppManifest = {
 
 await WebAppManfiestController.loadManifest(manifest);
 
-console.log('Hello');
-
 export const server = await ServerController.createServer({
   redis: {
     hostname: 'Redis',

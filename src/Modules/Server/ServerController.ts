@@ -50,7 +50,15 @@ export class ServerController {
 
     logger.debug(`ServerController.startTypeScript() workers: `, workers);
 
-    await this.typescriptController.createTask('helloFucker');
+    const randomArray = [...Array(10).fill(0)];
+
+    await Promise.all(
+      randomArray.map(() => {
+        logger.info(`Adding a task to workers`);
+
+        return this.typescriptController.createTask('helloFucker');
+      }),
+    );
 
     logger.info('Done');
   }
