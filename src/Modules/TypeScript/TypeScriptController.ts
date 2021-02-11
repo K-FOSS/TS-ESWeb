@@ -1,5 +1,4 @@
 // src/Modules/TypeScript/TypeScriptController.ts
-import { Job } from 'bullmq';
 import { Inject, Service } from 'typedi';
 import { fileURLToPath } from 'url';
 import { logger } from '../../Library/Logger';
@@ -103,7 +102,7 @@ export class TypeScriptController {
    */
   public createTranspilerTask(
     jobInput: TranspilerWorkerJobInput,
-  ): Promise<Job> {
+  ): Promise<unknown> {
     const job = this.transpilerQueue.addTask(jobInput);
 
     logger.info(`TypeScriptController.createTask()`);
@@ -118,9 +117,16 @@ export class TypeScriptController {
    *
    * @returns Promise resolving to the created BullMQ Job
    */
-  public createModuleMapTask(jobInput: ModuleMapWorkerJobInput): Promise<Job> {
-    const job = this.moduleMapQueue.addTask(jobInput);
+  public async createModuleMapTask(
+    jobInput: ModuleMapWorkerJobInput,
+  ): Promise<unknown> {
+    return this.moduleMapQueue.addTask(jobInput);
+  }
 
-    return job;
+  public async waitForModuleMap(): Promise<void[]> {
+    return Promise.all([
+      this.moduleMapQueue.queue.closing,
+      this.moduleMapQueue.queueEvents.closing,
+    ]);
   }
 }

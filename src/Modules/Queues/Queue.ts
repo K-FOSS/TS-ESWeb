@@ -54,6 +54,8 @@ export class Queue<QueueName extends string, JobInput, JobOutput> {
    */
   private logger: Logger;
 
+  public startDate = Date.now();
+
   public constructor(
     options: QueueOptions<
       QueueName,
@@ -74,8 +76,20 @@ export class Queue<QueueName extends string, JobInput, JobOutput> {
   /**
    * Terminate all worker threads.
    */
-  private terminateWorkers(): Promise<number[]> {
-    return Promise.all(this.workers.map((worker) => worker.terminate()));
+  private terminateWorkers(): Promise<
+    [
+      ...PromiseSettledResult<number | void>[],
+      PromiseSettledResult<number | void>,
+      PromiseSettledResult<number | void>,
+    ]
+  > {
+    const workerTeminiations = this.workers.map((worker) => worker.terminate());
+
+    return Promise.allSettled([
+      ...workerTeminiations,
+      this.queue.close(),
+      this.queueEvents.close(),
+    ]);
   }
 
   /**
@@ -93,7 +107,14 @@ export class Queue<QueueName extends string, JobInput, JobOutput> {
   /**
    * Check if there are any active jobs/tasks
    */
-  private async checkActiveJobs(): Promise<number[] | void> {
+  private async checkActiveJobs(): Promise<
+    | [
+        ...PromiseSettledResult<number | void>[],
+        PromiseSettledResult<number | void>,
+        PromiseSettledResult<number | void>,
+      ]
+    | undefined
+  > {
     const activeJobCount = await this.queue.getActiveCount();
 
     this.logger.debug(`Queue.checkActiveJobs()`, {
@@ -111,7 +132,11 @@ export class Queue<QueueName extends string, JobInput, JobOutput> {
     if (activeJobCount === 0) {
       clearInterval(this.checkInterval);
 
-      this.logger.info(`Queue.checkActiveJobs() Shutting down workers`);
+      this.logger.info(
+        `Queue.checkActiveJobs() Shutting down workers ${
+          (Date.now() - this.startDate) / 1000
+        }`,
+      );
 
       return this.terminateWorkers();
     }
@@ -207,12 +232,12 @@ export class Queue<QueueName extends string, JobInput, JobOutput> {
    *
    * @returns BullMQ Job object
    */
-  public addTask(input: JobInput): Promise<Job> {
-    const job = this.queue.add(this.options.name, input);
+  public async addTask(input: JobInput): Promise<unknown> {
+    const job = await this.queue.add(this.options.name, input);
 
     this.logger.debug(`Queue.addTask(${JSON.stringify(input)})`);
 
-    return job;
+    return job.waitUntilFinished(this.queueEvents);
   }
 
   /**

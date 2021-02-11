@@ -2,7 +2,7 @@
 import { getWorkerData } from '@k-foss/ts-worker';
 import '../../Utils/Setup';
 import { plainToClass } from 'class-transformer';
-import { Queue, Worker } from 'bullmq';
+import { Queue, QueueEvents, Worker } from 'bullmq';
 import { logger as coreLogger } from '../../Library/Logger';
 import { WorkerInput } from './WorkerInput';
 import { validateOrReject } from 'class-validator';
@@ -39,6 +39,14 @@ await validateOrReject(workerInput);
 
 const moduleMapQue = new Queue(workerInput.queName, {
   ...workerInput.queueOptions,
+});
+
+const moduleMapQueEvents = new QueueEvents(workerInput.queName, {
+  ...workerInput.queueOptions,
+});
+
+logger.silly(`Testing`, {
+  moduleMapQueEvents,
 });
 
 interface ModuleMap {
