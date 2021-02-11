@@ -8,6 +8,7 @@ import { WorkerInput } from './WorkerInput';
 import { validateOrReject } from 'class-validator';
 import { RedisOptions } from '../Redis/RedisOptions';
 import { TranspilerWorkerJobInput } from './TranspilerWorkerJobInput';
+import { timeout } from '../../Utils/timeout';
 
 const data = getWorkerData(import.meta.url);
 
@@ -23,10 +24,12 @@ await validateOrReject(workerInput);
 async function transformFile(filePath: string): Promise<string> {
   logger.info(`Transforming ${filePath}`);
 
+  await timeout(50);
+
   return `console.log('helloWorld')`;
 }
 
-const transpilerWorker = new Worker<TranspilerWorkerJobInput>(
+const _transpilerWorker = new Worker<TranspilerWorkerJobInput>(
   workerInput.queName,
   async (job) => {
     const jobInput = plainToClass(TranspilerWorkerJobInput, job.data);
@@ -44,9 +47,7 @@ const transpilerWorker = new Worker<TranspilerWorkerJobInput>(
     };
   },
   {
-    connection: {
-      host: workerInput.redisOptions.hostname,
-    },
+    ...workerInput.redisOptions,
     concurrency: 2,
   },
 );

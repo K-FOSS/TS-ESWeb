@@ -163,8 +163,12 @@ export class Queue<QueueName extends string, JobInput, JobOutput> {
   }
 
   public async waitForTask(task: Job): Promise<void> {
-    const job = await task.waitUntilFinished(this.queueEvents);
+    const jobOutput = (await task.waitUntilFinished(
+      this.queueEvents,
+    )) as JobOutput;
 
-    logger.debug(`Queue.waitForTask(${task.name}) ${JSON.stringify(job)}`);
+    logger.debug(
+      `Queue.waitForTask(${task.name}) ${JSON.stringify(jobOutput)}`,
+    );
   }
 }

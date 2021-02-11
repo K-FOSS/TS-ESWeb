@@ -13,6 +13,7 @@ export class ServerController {
   @Inject(serverOptionsToken)
   public options: ServerOptions;
 
+  // eslint-disable-next-line no-useless-constructor
   public constructor(private typescriptController: TypeScriptController) {}
 
   /**

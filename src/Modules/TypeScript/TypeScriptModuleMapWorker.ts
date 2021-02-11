@@ -121,9 +121,7 @@ const moduleWorker = new Worker<ModuleMapWorkerJobInput, ResolvedModuleMap>(
     return discoverModuleMap(jobInput);
   },
   {
-    connection: {
-      host: workerInput.redisOptions.hostname,
-    },
+    ...workerInput.redisOptions,
     concurrency: 2,
   },
 );
