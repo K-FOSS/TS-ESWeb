@@ -54,6 +54,8 @@ export class Queue<QueueName extends string, JobInput, JobOutput> {
   private async checkActiveJobs(): Promise<number[] | void> {
     const activeJobCount = await this.queue.getActiveCount();
 
+    console.log('Active Jobs: ', activeJobCount);
+
     if (this.hasRun === false) {
       if (activeJobCount > 0) {
         this.hasRun = true;
@@ -109,6 +111,8 @@ export class Queue<QueueName extends string, JobInput, JobOutput> {
    */
   public async createWorkers(workerPath: string): Promise<void> {
     await this.queue.clean(0, 1000);
+
+    console.log('Creating worker: ', workerPath);
 
     for (const _workerThread of Array(cpus().length - 1).fill(0)) {
       logger.info('Spawning worker');
