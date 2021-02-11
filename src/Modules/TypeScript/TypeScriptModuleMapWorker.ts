@@ -16,10 +16,14 @@ import { ResolvedModuleMap } from './ResolvedModuleMap';
 
 const data = getWorkerData(import.meta.url);
 
+console.log('ModuleMapWorkerData: ', data);
+
 const workerInput = plainToClass(WorkerInput, <WorkerInput>{
   redisOptions: JSON.parse(data.redisOptions) as RedisOptions,
   queName: data?.queName as string,
 });
+
+console.log('ModuleMapWorker: ', workerInput);
 
 await validateOrReject(workerInput);
 

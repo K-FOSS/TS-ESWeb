@@ -34,9 +34,9 @@ export class QueueController {
 
     return new Queue({
       name,
-      bullOptions: bullOptions,
+      bullOptions,
       outputClass,
-      in
+      inputClass,
     });
   }
 }
