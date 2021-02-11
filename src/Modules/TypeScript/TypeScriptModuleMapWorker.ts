@@ -192,7 +192,7 @@ const moduleWorker = new Worker<ModuleMapWorkerJobInput, ResolvedModuleMap>(
   },
   {
     connection: workerInput.queueOptions.connection,
-    concurrency: 1,
+    concurrency: 2,
   },
 );
 

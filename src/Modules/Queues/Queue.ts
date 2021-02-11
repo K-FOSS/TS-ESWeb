@@ -131,13 +131,6 @@ export class Queue<QueueName extends string, JobInput, JobOutput> {
 
     if (activeJobCount === 0) {
       clearInterval(this.checkInterval);
-
-      this.logger.info(
-        `Queue.checkActiveJobs() Shutting down workers ${
-          (Date.now() - this.startDate) / 1000
-        }`,
-      );
-
       return this.terminateWorkers();
     }
   }
