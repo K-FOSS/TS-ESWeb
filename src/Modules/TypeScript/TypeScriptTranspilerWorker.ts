@@ -91,7 +91,7 @@ const transpilerWorker = new Worker<TranspilerWorkerJobInput>(
   },
 );
 
-logger.debug(`Created transpilerWorker`, {
+logger.silly(`Created transpilerWorker`, {
   objectName: 'transpilerWorker',
   transpilerWorker,
 });

@@ -48,8 +48,6 @@ export class ServerController {
       `ServerController.startTypeScript() starting TypeScript Module Map`,
     );
 
-    const timeStart = Date.now();
-
     await Promise.all([
       this.typescriptController.createModuleMapWorkers(),
       this.typescriptController.createTranspilerWorkers(),
@@ -60,13 +58,5 @@ export class ServerController {
         await import.meta.resolve('../../Web_Test/Imports.ts'),
       ),
     });
-    await this.typescriptController.waitForModuleMap();
-
-    const timeEnd = Date.now();
-
-    const timeMs = timeEnd - timeStart;
-    const timeS = timeMs / 1000;
-
-    console.log('Done Fuckers', timeS);
   }
 }

@@ -196,7 +196,7 @@ const moduleWorker = new Worker<ModuleMapWorkerJobInput, ResolvedModuleMap>(
   },
 );
 
-logger.debug(`Created moduleWorker`, {
+logger.silly(`Created moduleWorker`, {
   objectName: 'moduleWorker',
   moduleWorker,
 });

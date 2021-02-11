@@ -122,11 +122,4 @@ export class TypeScriptController {
   ): Promise<unknown> {
     return this.moduleMapQueue.addTask(jobInput);
   }
-
-  public async waitForModuleMap(): Promise<void[]> {
-    return Promise.all([
-      this.moduleMapQueue.queue.closing,
-      this.moduleMapQueue.queueEvents.closing,
-    ]);
-  }
 }
