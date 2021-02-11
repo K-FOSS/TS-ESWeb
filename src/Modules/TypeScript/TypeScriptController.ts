@@ -74,24 +74,6 @@ export class TypeScriptController {
     logger.debug(
       `TypeScriptController.createModuleMapWorkers() workerPathURI: ${workerPathURI}`,
     );
-
-    // eslint-disable-next-line @typescript-eslint/no-misused-promises
-    // this.moduleMapQueue.queueEvents.on('completed', async (msg) => {
-    //   const job = await this.moduleMapQueue.queue.getJob(msg.jobId);
-
-    //   console.log('JobInput: ', job.data);
-
-    //   const jobOutput = plainToClass(ResolvedModuleMap, msg.returnvalue);
-    //   const jobInput = plainToClass(ModuleMapWorkerJobInput, job?.data);
-
-    //   console.log('MotherFucker', msg.returnvalue);
-
-    //   console.log(
-    //     `${jobInput.specifier || jobInput.filePath} resovled ${JSON.stringify(
-    //       jobOutput?.importedModules,
-    //     )}`,
-    //   );
-    // });
   }
 
   /**
@@ -110,19 +92,6 @@ export class TypeScriptController {
     logger.debug(
       `TypeScriptController.createTranspilerWorkers() workerPathURI: ${workerPathURI}`,
     );
-
-    // for (const _workerThread of Array(cpus().length - 1).fill(0)) {
-    //   logger.info('Spawning Transpiler worker');
-
-    //   const { spawnWorker } = await import('@k-foss/ts-worker');
-
-    //   console.log('TranspileQueFucker: ', this.transpilerQueue.name);
-
-    //   const worker = spawnWorker(fileURLToPath(workerPathURI), {
-    //     redisOptions: JSON.stringify(this.options.redis),
-    //     queName: this.transpilerQueue.name,
-    //   });
-    // }
   }
 
   /**

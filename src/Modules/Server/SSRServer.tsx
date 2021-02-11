@@ -71,19 +71,6 @@ export class SSRServer {
     this.options = opt;
   }
 
-  /**
-   * Start transpiling Modules from Imports
-   */
-  public async startTranspiler(): Promise<void> {
-    logger.info(`Starting transpiler for ${this.entrypoint}`);
-
-    logger.debug(
-      `SSRServer.startTranspiler() entrypoint: ${this.entrypoint} this.options.webRoot: ${this.options.webRoot}`,
-    );
-
-    await startWebTranspiler(this.entrypoint);
-  }
-
   public async createFastifyServer(): Promise<FastifyInstance> {
     /**
      * Get All Route Modules.
