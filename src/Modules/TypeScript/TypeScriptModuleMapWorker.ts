@@ -28,7 +28,7 @@ console.log('ModuleMapWorker: ', workerInput);
 await validateOrReject(workerInput);
 
 const moduleMapQue = new Queue(workerInput.queName, {
-  connection: workerInput.redisOptions,
+  ...workerInput.redisOptions,
 });
 
 interface ModuleMap {
@@ -121,7 +121,7 @@ const moduleWorker = new Worker<ModuleMapWorkerJobInput, ResolvedModuleMap>(
     return discoverModuleMap(jobInput);
   },
   {
-    ...workerInput.redisOptions,
+    connection: workerInput.redisOptions.connection,
     concurrency: 2,
   },
 );

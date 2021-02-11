@@ -19,7 +19,11 @@ const workerInput = plainToClass(WorkerInput, <WorkerInput>{
   queName: data?.queName as string,
 });
 
+console.log('TranspilerWorkerInput: ', workerInput);
+
 await validateOrReject(workerInput);
+
+console.log(workerInput.redisOptions);
 
 async function transformFile(filePath: string): Promise<string> {
   logger.info(`Transforming ${filePath}`);
@@ -47,7 +51,7 @@ const _transpilerWorker = new Worker<TranspilerWorkerJobInput>(
     };
   },
   {
-    ...workerInput.redisOptions,
+    connection: workerInput.redisOptions.connection,
     concurrency: 2,
   },
 );

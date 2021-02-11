@@ -105,7 +105,7 @@ export class TypeScriptController {
     );
     const workerPath = fileURLToPath(workerPathURI);
 
-    await this.moduleMapQueue.createWorkers(workerPath);
+    await this.transpilerQueue.createWorkers(workerPath);
 
     logger.debug(
       `TypeScriptController.createModuleMapWorkers() workerPathURI: ${workerPathURI}`,
