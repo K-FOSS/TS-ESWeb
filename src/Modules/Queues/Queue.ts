@@ -9,7 +9,9 @@ import { spawnWorker } from '@k-foss/ts-worker';
 import { cpus } from 'os';
 import { logger } from '../../Library/Logger';
 import { QueueOptions } from './QueueOptions';
-import { ClassConstructor } from 'class-transformer';
+import { ClassConstructor, plainToClass } from 'class-transformer';
+import { Logger } from 'winston';
+import { WorkerInput } from '../TypeScript/WorkerInput';
 
 /**
  * Task Queue handled by dedicated `worker_threads` created by
@@ -19,13 +21,26 @@ import { ClassConstructor } from 'class-transformer';
  * a Redis backend
  */
 export class Queue<QueueName extends string, JobInput, JobOutput> {
+  /**
+   * BullMQ Queue and QueueEvents object
+   */
   public queue: BullMQQueue<JobInput, unknown, QueueName>;
   public queueEvents: BullMQQueueEvents;
 
+  /**
+   * Array of Child Workers
+   */
   public workers: Worker[] = [];
 
+  /**
+   * Boolean value if a single job has been created.
+   */
   public hasRun = false;
 
+  /**
+   * Node.JS Interval to check if there are any active jobs if not,
+   * and a job has already been created, the child workers are exited.
+   */
   public checkInterval: NodeJS.Timeout;
 
   public options: QueueOptions<
@@ -33,6 +48,11 @@ export class Queue<QueueName extends string, JobInput, JobOutput> {
     ClassConstructor<JobInput>,
     ClassConstructor<JobOutput>
   >;
+
+  /**
+   * Local logger object adding additional metadata
+   */
+  private logger: Logger;
 
   public constructor(
     options: QueueOptions<
@@ -45,16 +65,40 @@ export class Queue<QueueName extends string, JobInput, JobOutput> {
     this.queueEvents = new BullMQQueueEvents(options.name, options.bullOptions);
 
     this.options = options;
+
+    this.logger = logger.child({
+      queName: this.queue.name,
+    });
   }
 
+  /**
+   * Terminate all worker threads.
+   */
   private terminateWorkers(): Promise<number[]> {
     return Promise.all(this.workers.map((worker) => worker.terminate()));
   }
 
+  /**
+   * Clean all jobs from Redis/BullMQ
+   */
+  private async cleanQueue(): Promise<unknown[]> {
+    this.logger.debug(`Queue.cleanQueue()`);
+
+    return Promise.all([
+      this.queue.clean(0, 1000, 'active'),
+      this.queue.clean(0, 1000),
+    ]);
+  }
+
+  /**
+   * Check if there are any active jobs/tasks
+   */
   private async checkActiveJobs(): Promise<number[] | void> {
     const activeJobCount = await this.queue.getActiveCount();
 
-    console.log('Active Jobs: ', activeJobCount);
+    this.logger.debug(`Queue.checkActiveJobs()`, {
+      activeJobCount,
+    });
 
     if (this.hasRun === false) {
       if (activeJobCount > 0) {
@@ -67,7 +111,7 @@ export class Queue<QueueName extends string, JobInput, JobOutput> {
     if (activeJobCount === 0) {
       clearInterval(this.checkInterval);
 
-      logger.info(`Shutting down workers`);
+      this.logger.info(`Queue.checkActiveJobs() Shutting down workers`);
 
       return this.terminateWorkers();
     }
@@ -79,10 +123,8 @@ export class Queue<QueueName extends string, JobInput, JobOutput> {
   private startWatching(): void {
     this.checkInterval = setInterval(() => {
       this.checkActiveJobs().catch((err) => {
-        logger.error(
-          `Queue({${this.queue.name}) startWatching error: ${JSON.stringify(
-            err,
-          )}`,
+        this.logger.error(
+          `Queue.startWatching() startWatching error: ${JSON.stringify(err)}`,
         );
 
         return this.terminateWorkers();
@@ -110,17 +152,24 @@ export class Queue<QueueName extends string, JobInput, JobOutput> {
    * @returns Promise resolving once the workers threads have all been created
    */
   public async createWorkers(workerPath: string): Promise<void> {
-    await this.queue.clean(0, 1000);
+    this.logger.debug(`Queue.createWorkers('${workerPath}')`);
 
-    console.log('Creating worker: ', workerPath);
+    this.logger.debug(`Queue.createWorkers() cleaning old jobs`);
+
+    await this.cleanQueue();
+
+    const workerInput: WorkerInput = {
+      queueOptions: this.queue.opts,
+      queName: this.queue.name,
+    };
 
     for (const _workerThread of Array(cpus().length - 1).fill(0)) {
-      logger.info('Spawning worker');
+      this.logger.info(`Queue.createWorkers() spawning worker`);
 
-      const worker = spawnWorker(workerPath, {
-        redisOptions: JSON.stringify(this.queue.opts),
-        queName: this.queue.name,
-      });
+      const worker = spawnWorker(
+        workerPath,
+        plainToClass(WorkerInput, workerInput),
+      );
 
       this.workers.push(worker);
     }
@@ -161,17 +210,21 @@ export class Queue<QueueName extends string, JobInput, JobOutput> {
   public addTask(input: JobInput): Promise<Job> {
     const job = this.queue.add(this.options.name, input);
 
-    logger.debug(`Queue.addTask(${JSON.stringify(input)})`);
+    this.logger.debug(`Queue.addTask(${JSON.stringify(input)})`);
 
     return job;
   }
 
+  /**
+   * Wait for the result of the specified task
+   * @param task BullMQ Job entity
+   */
   public async waitForTask(task: Job): Promise<void> {
     const jobOutput = (await task.waitUntilFinished(
       this.queueEvents,
     )) as JobOutput;
 
-    logger.debug(
+    this.logger.debug(
       `Queue.waitForTask(${task.name}) ${JSON.stringify(jobOutput)}`,
     );
   }

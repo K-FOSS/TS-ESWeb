@@ -108,7 +108,7 @@ export class TypeScriptController {
     await this.transpilerQueue.createWorkers(workerPath);
 
     logger.debug(
-      `TypeScriptController.createModuleMapWorkers() workerPathURI: ${workerPathURI}`,
+      `TypeScriptController.createTranspilerWorkers() workerPathURI: ${workerPathURI}`,
     );
 
     // for (const _workerThread of Array(cpus().length - 1).fill(0)) {

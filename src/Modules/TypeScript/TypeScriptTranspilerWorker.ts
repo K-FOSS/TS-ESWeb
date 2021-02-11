@@ -3,44 +3,79 @@ import { getWorkerData } from '@k-foss/ts-worker';
 import '../../Utils/Setup';
 import { plainToClass } from 'class-transformer';
 import { Worker } from 'bullmq';
-import { logger } from '../../Library/Logger';
+import { logger as coreLogger } from '../../Library/Logger';
 import { WorkerInput } from './WorkerInput';
 import { validateOrReject } from 'class-validator';
-import { RedisOptions } from '../Redis/RedisOptions';
 import { TranspilerWorkerJobInput } from './TranspilerWorkerJobInput';
-import { timeout } from '../../Utils/timeout';
+import { readFile } from 'fs/promises';
+import { threadId } from 'worker_threads';
+
+const logger = coreLogger.child({
+  workerFile: 'TypeScriptTranspilerWorker.ts',
+  workerId: threadId,
+});
+
+logger.info(`Worker starting`);
 
 const data = getWorkerData(import.meta.url);
 
-console.log(`TranspilerWorker:`, data, import.meta.url);
-
-const workerInput = plainToClass(WorkerInput, <WorkerInput>{
-  redisOptions: JSON.parse(data.redisOptions) as RedisOptions,
-  queName: data?.queName as string,
+logger.debug(`Retrieved workerData:`, {
+  objectName: 'data',
+  data,
 });
 
-console.log('TranspilerWorkerInput: ', workerInput);
+const workerInput = plainToClass(WorkerInput, data);
+
+logger.debug(`Transformed to class`, {
+  objectName: 'workerInput',
+  workerInput,
+});
 
 await validateOrReject(workerInput);
-
-console.log(workerInput.redisOptions);
 
 async function transformFile(filePath: string): Promise<string> {
   logger.info(`Transforming ${filePath}`);
 
-  await timeout(50);
+  logger.silly(`Loading File`, {
+    filePath,
+  });
+
+  const file = await readFile(filePath);
+
+  logger.debug(`Opened file`, {
+    filePath,
+    file,
+  });
 
   return `console.log('helloWorld')`;
 }
 
-const _transpilerWorker = new Worker<TranspilerWorkerJobInput>(
+const transpilerWorker = new Worker<TranspilerWorkerJobInput>(
   workerInput.queName,
   async (job) => {
+    logger.info(`Recieved a task for transpilerWorker`, {
+      worker: 'transpilerWorker',
+    });
+
+    logger.debug(`Task input`, {
+      worker: 'transpilerWorker',
+      jobInput: job.data,
+    });
+
     const jobInput = plainToClass(TranspilerWorkerJobInput, job.data);
+
+    logger.debug(`Transformed job.data to Class`, {
+      worker: 'transpilerWorker',
+      objectName: 'jobInput',
+      jobInput,
+    });
 
     await validateOrReject(jobInput);
 
-    logger.info(`TypeScript Transpiler Worker: filePath: ${jobInput.filePath}`);
+    logger.debug(`Validated jobInput`, {
+      worker: 'transpilerWorker',
+      jobInput,
+    });
 
     const transformedModule = await transformFile(jobInput.filePath);
 
@@ -51,7 +86,12 @@ const _transpilerWorker = new Worker<TranspilerWorkerJobInput>(
     };
   },
   {
-    connection: workerInput.redisOptions.connection,
+    connection: workerInput.queueOptions.connection,
     concurrency: 2,
   },
 );
+
+logger.debug(`Created transpilerWorker`, {
+  objectName: 'transpilerWorker',
+  transpilerWorker,
+});

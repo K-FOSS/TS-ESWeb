@@ -1,12 +1,22 @@
 // src/Modules/TypeScript/WorkerInput.ts
 import type { QueueOptions } from 'bullmq';
-import { Type } from 'class-transformer';
+import { Transform } from 'class-transformer';
 import { IsString } from 'class-validator';
-import { RedisOptions } from '../Redis/RedisOptions';
+import { logger } from '../../Library/Logger';
 
 export class WorkerInput {
-  @Type(() => RedisOptions)
-  public redisOptions: QueueOptions;
+  @Transform(({ value }) => {
+    if (typeof value === 'string') {
+      logger.debug(`WorkerInput.queueOptions is string`, {
+        value,
+      });
+
+      return JSON.parse(value) as QueueOptions;
+    }
+
+    return JSON.stringify(value);
+  })
+  public queueOptions: QueueOptions;
 
   /**
    * Name of the TypeScript Transpiler Que for this worker

@@ -48,10 +48,10 @@ export class ServerController {
       `ServerController.startTypeScript() starting TypeScript Module Map`,
     );
 
-    await this.typescriptController.createModuleMapWorkers();
-    await this.typescriptController.createTranspilerWorkers();
-
-    console.log('Starting Module Task');
+    await Promise.all([
+      this.typescriptController.createModuleMapWorkers(),
+      this.typescriptController.createTranspilerWorkers(),
+    ]);
 
     await this.typescriptController.createModuleMapTask({
       filePath: fileURLToPath(
