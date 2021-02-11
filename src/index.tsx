@@ -2,7 +2,6 @@
 import { resolve } from 'path';
 import 'reflect-metadata';
 import { logger } from './Library/Logger';
-import { createSSRServer } from './Modules/Server';
 import { ServerController } from './Modules/Server/ServerController';
 import { WebAppManifest } from './Modules/WebAppManifest/WebAppManifest';
 import { WebAppManfiestController } from './Modules/WebAppManifest/WebAppManifestController';
@@ -33,7 +32,7 @@ await WebAppManfiestController.loadManifest(manifest);
 
 export const server = await ServerController.createServer({
   redis: {
-    hostname: 'Redis',
+    host: 'Redis',
   },
   ssr: {
     webRoot: resolve('./src/Web_Test'),

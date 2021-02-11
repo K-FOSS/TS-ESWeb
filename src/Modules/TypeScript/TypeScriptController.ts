@@ -1,142 +1,156 @@
 // src/Modules/TypeScript/TypeScriptController.ts
-import { spawnWorker } from '@k-foss/ts-worker';
 import { Job } from 'bullmq';
-import { Worker } from 'worker_threads';
-import { cpus } from 'os';
 import { Inject, Service } from 'typedi';
 import { fileURLToPath } from 'url';
 import { logger } from '../../Library/Logger';
-import { Queue } from '../Ques/Que';
+import { Queue } from '../Queues/Queue';
+import { QueueController } from '../Queues/QueueController';
 import { ServerOptions, serverOptionsToken } from '../Server/ServerOptions';
 import { ModuleMapWorkerJobInput } from './ModuleMapWorkerJobInput';
+import { ResolvedModuleMap } from './ResolvedModuleMap';
+import { TranspiledModuleOutput } from './TranspiledModuleOutput';
 import { TranspilerWorkerJobInput } from './TranspilerWorkerJobInput';
 
 @Service()
 export class TypeScriptController {
-  @Inject(serverOptionsToken)
-  public options: ServerOptions;
+  /**
+   * Transpiler Que and Workers for transpiling Files to ESModules
+   */
+  private transpilerQueue: Queue<
+    'typescriptTranspiler',
+    TranspilerWorkerJobInput,
+    TranspiledModuleOutput
+  >;
+
+  /**
+   * Module Map Que and Workers for determining all imported and related modules and files
+   */
+  private moduleMapQueue: Queue<
+    'typescriptModuleMap',
+    ModuleMapWorkerJobInput,
+    ResolvedModuleMap
+  >;
 
   public constructor(
-    private transpilerQue: Queue<TranspilerWorkerJobInput>,
-    private moduleMapQue: Queue<ModuleMapWorkerJobInput>,
+    @Inject(serverOptionsToken)
+    public options: ServerOptions,
+    @Inject(() => QueueController)
+    private queueController: QueueController,
   ) {
     logger.debug(`TypeScriptController.constructor()`);
 
-    transpilerQue.createQueue('typescriptTranspiler');
-    moduleMapQue.createQueue('typescriptModuleMap');
+    const typescriptTranspilerKey = 'typescriptTranspiler';
+    const moduleMapQueKey = 'typescriptModuleMap';
+
+    this.transpilerQueue = this.queueController.createQueue(
+      typescriptTranspilerKey,
+      TranspilerWorkerJobInput,
+      TranspiledModuleOutput,
+    );
+
+    this.moduleMapQueue = this.queueController.createQueue(
+      moduleMapQueKey,
+      ModuleMapWorkerJobInput,
+      ResolvedModuleMap,
+    );
   }
 
+  /**
+   * Spawn the Module Map Workers
+   */
   public async createModuleMapWorkers(): Promise<void> {
     logger.info(`TypeScriptController.createModuleMapWorkers()`);
-
-    const moduleMapQue = this.moduleMapQue.queue;
 
     const workerPathURI = await import.meta.resolve(
       './TypeScriptModuleMapWorker',
     );
+    const workerPath = fileURLToPath(workerPathURI);
+
+    /**
+     * Create the @K-FOSS/TS-ESWorkers.
+     */
+    await this.moduleMapQueue.createWorkers(workerPath);
 
     logger.debug(
-      `TypeScriptController.createModuleMapWorkers() workerPathURI: ${workerPathURI} containerId: ${this.options.serverId}`,
+      `TypeScriptController.createModuleMapWorkers() workerPathURI: ${workerPathURI}`,
     );
 
-    await moduleMapQue.clean(0, 1000);
-
     // eslint-disable-next-line @typescript-eslint/no-misused-promises
-    this.moduleMapQue.queueEvents.on('completed', async (msg) => {
-      const job = await moduleMapQue.getJob(msg.jobId);
+    // this.moduleMapQueue.queueEvents.on('completed', async (msg) => {
+    //   const job = await this.moduleMapQueue.queue.getJob(msg.jobId);
 
-      const specifier = job?.data?.specifier as string;
+    //   console.log('JobInput: ', job.data);
 
-      console.log(
-        `${specifier} resovled ${JSON.stringify(
-          msg.returnvalue.importedModules,
-        )}`,
-      );
-    });
+    //   const jobOutput = plainToClass(ResolvedModuleMap, msg.returnvalue);
+    //   const jobInput = plainToClass(ModuleMapWorkerJobInput, job?.data);
 
-    const workers: Worker[] = [];
+    //   console.log('MotherFucker', msg.returnvalue);
 
-    for (const _workerThread of Array(cpus().length - 1).fill(0)) {
-      logger.info('Spawning worker');
-
-      const worker = spawnWorker(fileURLToPath(workerPathURI), {
-        redisOptions: JSON.stringify(this.options.redis),
-        queName: moduleMapQue.name,
-      });
-
-      workers.push(worker);
-    }
-
-    const interval = setInterval(() => {
-      checkActiveJobs();
-    }, 500);
-
-    let hasRun: boolean = false;
-
-    async function checkActiveJobs(): Promise<number[] | void> {
-      const activeJobCount = await moduleMapQue.getActiveCount();
-
-      if (hasRun === false && activeJobCount > 0) {
-        hasRun = true;
-      }
-
-      if (hasRun === false) {
-        return;
-      }
-
-      console.log(activeJobCount);
-
-      if (activeJobCount === 0) {
-        clearInterval(interval);
-
-        console.log('Shutting down workers');
-
-        return Promise.all(workers.map((worker) => worker.terminate()));
-      }
-    }
+    //   console.log(
+    //     `${jobInput.specifier || jobInput.filePath} resovled ${JSON.stringify(
+    //       jobOutput?.importedModules,
+    //     )}`,
+    //   );
+    // });
   }
 
+  /**
+   * Spawn the TypeScript Transpiler Workers
+   */
   public async createTranspilerWorkers(): Promise<void> {
     logger.info(`TypeScriptController.createTranspilerWorkers()`);
 
     const workerPathURI = await import.meta.resolve(
       './TypeScriptTranspilerWorker',
     );
+    const workerPath = fileURLToPath(workerPathURI);
+
+    await this.moduleMapQueue.createWorkers(workerPath);
 
     logger.debug(
-      `TypeScriptController.createTranspilerWorkers() workerPathURI: ${workerPathURI} containerId: ${this.options.serverId}`,
+      `TypeScriptController.createModuleMapWorkers() workerPathURI: ${workerPathURI}`,
     );
 
-    for (const _workerThread of Array(cpus().length - 1).fill(0)) {
-      logger.info('Spawning Transpiler worker');
+    // for (const _workerThread of Array(cpus().length - 1).fill(0)) {
+    //   logger.info('Spawning Transpiler worker');
 
-      const worker = spawnWorker(fileURLToPath(workerPathURI), {
-        redisOptions: JSON.stringify(this.options.redis),
-        queName: this.transpilerQue.queue.name,
-      });
+    //   const { spawnWorker } = await import('@k-foss/ts-worker');
 
-      logger.debug(`worker: `, worker.threadId);
-    }
+    //   console.log('TranspileQueFucker: ', this.transpilerQueue.name);
+
+    //   const worker = spawnWorker(fileURLToPath(workerPathURI), {
+    //     redisOptions: JSON.stringify(this.options.redis),
+    //     queName: this.transpilerQueue.name,
+    //   });
+    // }
   }
 
+  /**
+   * Transpile a new FilePath
+   *
+   * @param jobInput Input to pass to the Transpiler Worker
+   *
+   * @returns Promise resolving to the created BullMQ Job
+   */
   public createTranspilerTask(
     jobInput: TranspilerWorkerJobInput,
   ): Promise<Job> {
-    const job = this.transpilerQue.queue.add(
-      this.transpilerQue.queue.name,
-      jobInput,
-    );
+    const job = this.transpilerQueue.addTask(jobInput);
 
     logger.info(`TypeScriptController.createTask()`);
 
     return job;
   }
 
+  /**
+   * Create a new "job" to create a module map for a specified input module
+   *
+   * @param jobInput Input to pass to the Module Map Worker
+   *
+   * @returns Promise resolving to the created BullMQ Job
+   */
   public createModuleMapTask(jobInput: ModuleMapWorkerJobInput): Promise<Job> {
-    const job = this.moduleMapQue.queue.add(
-      this.moduleMapQue.queue.name,
-      jobInput,
-    );
+    const job = this.moduleMapQueue.addTask(jobInput);
 
     return job;
   }

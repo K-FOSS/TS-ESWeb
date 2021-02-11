@@ -12,6 +12,7 @@ import { ModuleMapWorkerJobInput } from './ModuleMapWorkerJobInput';
 import { dirname } from 'path';
 import { getTSConfig } from './TSConfig';
 import { fileURLToPath, pathToFileURL } from 'url';
+import { ResolvedModuleMap } from './ResolvedModuleMap';
 
 const data = getWorkerData(import.meta.url);
 
@@ -23,9 +24,7 @@ const workerInput = plainToClass(WorkerInput, <WorkerInput>{
 await validateOrReject(workerInput);
 
 const moduleMapQue = new Queue(workerInput.queName, {
-  connection: {
-    host: workerInput.redisOptions.hostname,
-  },
+  connection: workerInput.redisOptions,
 });
 
 interface ModuleMap {
@@ -104,9 +103,11 @@ async function discoverModuleMap(
   };
 }
 
-const transpilerWorker = new Worker<ModuleMapWorkerJobInput>(
+const moduleWorker = new Worker<ModuleMapWorkerJobInput, ResolvedModuleMap>(
   workerInput.queName,
   async (job) => {
+    logger.info(`Recieved a task for moduleWorker`);
+
     const jobInput = plainToClass(ModuleMapWorkerJobInput, job.data);
 
     await validateOrReject(jobInput);
@@ -123,4 +124,4 @@ const transpilerWorker = new Worker<ModuleMapWorkerJobInput>(
   },
 );
 
-logger.debug(`TypeScriptTranspilerWorker.ts worker: `, transpilerWorker.name);
+logger.debug(`TypeScriptModuleMapWorker.ts worker: `, moduleWorker.name);

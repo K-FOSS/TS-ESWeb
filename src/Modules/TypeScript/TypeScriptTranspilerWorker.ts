@@ -11,14 +11,12 @@ import { TranspilerWorkerJobInput } from './TranspilerWorkerJobInput';
 
 const data = getWorkerData(import.meta.url);
 
-logger.debug(`TypeScriptWorker`, data);
+console.log(`TranspilerWorker:`, data, import.meta.url);
 
 const workerInput = plainToClass(WorkerInput, <WorkerInput>{
   redisOptions: JSON.parse(data.redisOptions) as RedisOptions,
   queName: data?.queName as string,
 });
-
-logger.debug(`TypeScriptTranspilerWorker: `, workerInput);
 
 await validateOrReject(workerInput);
 
@@ -40,6 +38,10 @@ const transpilerWorker = new Worker<TranspilerWorkerJobInput>(
     const transformedModule = await transformFile(jobInput.filePath);
 
     logger.debug(`transpilerWorker transformedModule: ${transformedModule}`);
+
+    return {
+      test: 'shti',
+    };
   },
   {
     connection: {
@@ -48,5 +50,3 @@ const transpilerWorker = new Worker<TranspilerWorkerJobInput>(
     concurrency: 2,
   },
 );
-
-logger.debug(`TypeScriptTranspilerWorker.ts worker: `, transpilerWorker);

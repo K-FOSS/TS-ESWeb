@@ -47,32 +47,15 @@ export class ServerController {
       `ServerController.startTypeScript() starting TypeScript Module Map`,
     );
 
-    await this.typescriptController.createModuleMapWorkers();
+    await Promise.all([
+      this.typescriptController.createModuleMapWorkers(),
+      this.typescriptController.createTranspilerWorkers(),
+    ]);
 
     await this.typescriptController.createModuleMapTask({
       filePath: fileURLToPath(
         await import.meta.resolve('../../Web_Test/Imports.ts'),
       ),
     });
-
-    // const workers = await this.typescriptController.createTranspilerWorkers();
-
-    // logger.debug(`ServerController.startTypeScript() workers: `, workers);
-
-    // const randomArray = [...Array(10).fill(0)];
-
-    // await Promise.all(
-    //   randomArray.map(async () => {
-    //     logger.info(`Adding a task to workers`);
-
-    //     return this.typescriptController.createTranspilerTask({
-    //       filePath: fileURLToPath(
-    //         await import.meta.resolve('../../Web_Test/Imports.ts'),
-    //       ),
-    //     });
-    //   }),
-    // );
-
-    // logger.info('Done');
   }
 }

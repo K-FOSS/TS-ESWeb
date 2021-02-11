@@ -5,7 +5,7 @@ import { Token } from 'typedi';
 export class RedisOptions {
   @IsString()
   @IsDefined()
-  public hostname: string;
+  public host: string;
 }
 
 export const redisOptionsToken = new Token<RedisOptions>('redisOptions');
