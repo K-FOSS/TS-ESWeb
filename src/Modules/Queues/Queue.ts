@@ -100,7 +100,7 @@ export class Queue<QueueName extends string, JobInput, JobOutput> {
   private async terminateWorkers(): Promise<number[]> {
     const workerTeminiations = this.workers.map((worker) => worker.terminate());
 
-    this.queueEvents.removeListener('drained', this.handleDrained);
+    // this.queueEvents.removeListener('drained', this.handleDrained);
 
     this.events.emit('done');
 
@@ -149,6 +149,8 @@ export class Queue<QueueName extends string, JobInput, JobOutput> {
     }
 
     if (anyJobs === false) {
+      logger.silly('Terminating workers');
+
       return this.terminateWorkers();
     }
   }
@@ -199,7 +201,7 @@ export class Queue<QueueName extends string, JobInput, JobOutput> {
       queName: this.queue.name,
     };
 
-    for (const _workerThread of Array(4).fill(0)) {
+    for (const _workerThread of Array(6).fill(0)) {
       this.logger.info(`Queue.createWorkers() spawning worker`);
 
       const worker = spawnWorker(
