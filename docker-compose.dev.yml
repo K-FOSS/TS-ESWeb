@@ -5,6 +5,7 @@ volumes:
 
 networks:
   internalRedis:
+  internalLoki:
 
 services:
   TSESWeb:
@@ -20,8 +21,22 @@ services:
       - modules:/workspace/node_modules
     networks:
       - internalRedis
+      - internalLoki
 
   Redis:
     image: redis:alpine3.12
     networks:
       - internalRedis
+
+  Loki:
+    image: grafana/loki:latest
+    command: -config.file=/etc/loki/local-config.yaml
+    networks:
+      - internalLoki
+
+  Grafana:
+    image: grafana/grafana:latest
+    ports:
+      - 3000:3000
+    networks:
+      - internalLoki

@@ -2,7 +2,7 @@
   "name": "TS-ESWeb Container",
   "dockerComposeFile": "./docker-compose.dev.yml",
   "service": "TSESWeb",
-  "runServices": ["TSESWeb", "Redis"],
+  "runServices": ["TSESWeb", "Redis", "Loki", "Grafana"],
   "settings": {
     // This dev container does include /bin/bash if you prefer to use it instead of ash.
     "terminal.integrated.shell.linux": "/bin/bash"

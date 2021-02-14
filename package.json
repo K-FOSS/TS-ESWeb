@@ -57,9 +57,11 @@
     "get-port": "^5.1.1",
     "graphql": "^15.4.0",
     "hyperid": "^2.1.0",
+    "ioredis": "^4.22.0",
     "p-event": "^4.2.0",
     "reflect-metadata": "^0.1.13",
     "type-graphql": "^1.1.1",
-    "winston": "^3.3.3"
+    "winston": "^3.3.3",
+    "winston-loki": "^6.0.0-rc.9"
   }
 }

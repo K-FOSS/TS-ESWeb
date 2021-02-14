@@ -1,12 +1,12 @@
 // src/Modules/Queue/Queue.ts
 import {
   Job,
+  JobsOptions,
   Queue as BullMQQueue,
   QueueEvents as BullMQQueueEvents,
 } from 'bullmq';
 import { Worker } from 'worker_threads';
 import { spawnWorker } from '@k-foss/ts-worker';
-import { cpus } from 'os';
 import { logger } from '../../Library/Logger';
 import { QueueOptions } from './QueueOptions';
 import { ClassConstructor, plainToClass } from 'class-transformer';
@@ -71,13 +71,32 @@ export class Queue<QueueName extends string, JobInput, JobOutput> {
     this.logger = logger.child({
       queName: this.queue.name,
     });
+
+    this.handleError = (args): void => {
+      this.logger.info(`Que has errored`, {
+        ...args,
+      });
+    };
+
+    this.queueEvents.on('failed', this.handleError);
   }
+
+  private handleError: (
+    args: {
+      jobId: string;
+      failedReason: string;
+      prev?: string;
+    },
+    id: string,
+  ) => void;
 
   /**
    * Terminate all worker threads.
    */
   private async terminateWorkers(): Promise<number[]> {
     const workerTeminiations = this.workers.map((worker) => worker.terminate());
+
+    this.queueEvents.removeListener('drained', this.handleDrained);
 
     return Promise.all(workerTeminiations);
   }
@@ -90,6 +109,10 @@ export class Queue<QueueName extends string, JobInput, JobOutput> {
 
     return Promise.all([
       this.queue.clean(0, 1000, 'active'),
+      this.queue.clean(0, 1000, 'failed'),
+      this.queue.clean(0, 1000, 'completed'),
+      this.queue.clean(0, 1000, 'wait'),
+      this.queue.clean(0, 1000, 'paused'),
       this.queue.clean(0, 1000),
     ]);
   }
@@ -97,55 +120,46 @@ export class Queue<QueueName extends string, JobInput, JobOutput> {
   /**
    * Check if there are any active jobs/tasks
    */
-  private async checkActiveJobs(): Promise<number[] | void> {
-    const activeJobCount = await this.queue.getActiveCount();
+  private async isRunningJobs(): Promise<number[] | void> {
+    const jobCounts = await Promise.all([
+      this.queue.getDelayedCount(),
+      this.queue.getActiveCount(),
+      this.queue.getFailedCount(),
+      this.queue.getFailed(),
+    ]);
 
-    this.logger.debug(`Queue.checkActiveJobs()`, {
-      activeJobCount,
-      hasRun: this.hasRun,
+    this.logger.silly(`jobCounts: `, {
+      jobCounts,
     });
 
+    const anyJobs = jobCounts.some((jobCount) => jobCount > 0);
+
     if (this.hasRun === false) {
-      if (activeJobCount > 0) {
-        this.logger.debug(`Queue.checkActiveJobs() activeJobs more than 0`);
-
+      if (anyJobs === true) {
         this.hasRun = true;
-
-        this.queueEvents.on('drained', () => {
-          this.logger.debug(`Queue has been drained?`);
-        });
       }
 
       return;
     }
 
-    if (activeJobCount === 0) {
-      clearInterval(this.checkInterval);
-
-      const endDate = Date.now();
-      const runTime = endDate - this.startDate;
-
-      const endS = runTime / 1000;
-
-      this.logger.debug(`endDate: ${endDate.toString()} ${endS} ${runTime}`);
-
+    if (anyJobs === false) {
       return this.terminateWorkers();
     }
   }
+
+  private handleDrained: () => void;
 
   /**
    * Start watching workers for active tasks and kill workers upon empty Queue
    */
   private startWatching(): void {
-    this.checkInterval = setInterval(() => {
-      this.checkActiveJobs().catch((err) => {
-        this.logger.error(
-          `Queue.startWatching() startWatching error: ${JSON.stringify(err)}`,
-        );
-
+    this.handleDrained = (): void => {
+      this.isRunningJobs().catch(() => {
         return this.terminateWorkers();
       });
-    }, 500);
+    };
+
+    this.queueEvents.on('drained', this.handleDrained);
   }
 
   /**
@@ -179,13 +193,21 @@ export class Queue<QueueName extends string, JobInput, JobOutput> {
       queName: this.queue.name,
     };
 
-    for (const _workerThread of Array(cpus().length - 1).fill(0)) {
+    for (const _workerThread of Array(4).fill(0)) {
       this.logger.info(`Queue.createWorkers() spawning worker`);
 
       const worker = spawnWorker(
         workerPath,
         plainToClass(WorkerInput, workerInput),
       );
+
+      worker.on('error', (err) => {
+        this.logger.error(`Worker thread has errored`, {
+          err,
+        });
+
+        this.logger.info(`TODO: Proper worker error handling`);
+      });
 
       this.workers.push(worker);
     }
@@ -223,8 +245,8 @@ export class Queue<QueueName extends string, JobInput, JobOutput> {
    *
    * @returns BullMQ Job object
    */
-  public async addTask(input: JobInput): Promise<Job> {
-    const job = await this.queue.add(this.options.name, input);
+  public async addTask(input: JobInput, opts?: JobsOptions): Promise<Job> {
+    const job = await this.queue.add(this.options.name, input, opts);
 
     this.logger.debug(`Queue.addTask(${JSON.stringify(input)})`);
 
@@ -235,13 +257,9 @@ export class Queue<QueueName extends string, JobInput, JobOutput> {
    * Wait for the result of the specified task
    * @param task BullMQ Job entity
    */
-  public async waitForTask(task: Job): Promise<void> {
-    const jobOutput = (await task.waitUntilFinished(
-      this.queueEvents,
-    )) as JobOutput;
+  public async waitForTask<T>(task: Job): Promise<T> {
+    this.logger.silly(`waitForTask()`);
 
-    this.logger.debug(
-      `Queue.waitForTask(${task.name}) ${JSON.stringify(jobOutput)}`,
-    );
+    return task.waitUntilFinished(this.queueEvents) as Promise<T>;
   }
 }

@@ -1,5 +1,6 @@
 // src/Library/Logger.ts
 import * as winston from 'winston';
+import LokiTransport from 'winston-loki';
 
 export enum LogLevel {
   SILLY = 'silly',
@@ -26,15 +27,28 @@ function getLevel(value: string): LogLevel {
 
 export const logger = winston.createLogger({
   level: getLevel(process.env.LOG_LEVEL),
-  format: winston.format.prettyPrint(),
-  defaultMeta: { appName: 'TS-ESWeb' },
+  defaultMeta: {
+    appName: 'TS-ESWeb',
+    get date(): string {
+      return new Date().toLocaleTimeString();
+    },
+  },
   transports: [
     //
     // - Write all logs with level `error` and below to `error.log`
     // - Write all logs with level `info` and below to `combined.log`
     //
     new winston.transports.Console({
-      debugStdout: true,
+      level: 'silly',
+      format: winston.format.prettyPrint({
+        colorize: true,
+      }),
+    }),
+    new LokiTransport({
+      host: 'http://Loki:3100',
+      format: winston.format.json({}),
+      labels: { appName: 'TS-ESWeb' },
+      json: false,
     }),
   ],
 });

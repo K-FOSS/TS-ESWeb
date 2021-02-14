@@ -1,4 +1,5 @@
 // src/Modules/TypeScript/TypeScriptController.ts
+import { Job } from 'bullmq';
 import { Inject, Service } from 'typedi';
 import { fileURLToPath } from 'url';
 import { logger } from '../../Library/Logger';
@@ -103,7 +104,13 @@ export class TypeScriptController {
   public createTranspilerTask(
     jobInput: TranspilerWorkerJobInput,
   ): Promise<unknown> {
-    const job = this.transpilerQueue.addTask(jobInput);
+    logger.silly(`TypeScriptController.createTranspilerTask()`, {
+      jobInput,
+    });
+
+    const job = this.transpilerQueue.addTask(jobInput, {
+      jobId: jobInput.filePath,
+    });
 
     logger.info(`TypeScriptController.createTask()`);
 
@@ -119,7 +126,31 @@ export class TypeScriptController {
    */
   public async createModuleMapTask(
     jobInput: ModuleMapWorkerJobInput,
-  ): Promise<unknown> {
-    return this.moduleMapQueue.addTask(jobInput);
+  ): Promise<Job> {
+    return this.moduleMapQueue.addTask(jobInput, {
+      jobId: jobInput.filePath,
+    });
+  }
+
+  public async waitForJob(job: Job): Promise<ResolvedModuleMap> {
+    return this.moduleMapQueue.waitForTask(job);
+  }
+
+  public async getModuleMap(filePath: string): Promise<ResolvedModuleMap> {
+    const job = await this.moduleMapQueue.queue.getJob(filePath);
+
+    if (job?.returnvalue) {
+      logger.silly(`job?.returnValue: `, {
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+        returnValue: job.returnvalue,
+      });
+
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+      return job?.returnvalue;
+    } else {
+      logger.warn(`getModuleMap(${filePath}) failed`);
+    }
+
+    throw new Error('Invalid file path');
   }
 }

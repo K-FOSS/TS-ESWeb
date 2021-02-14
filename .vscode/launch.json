@@ -16,7 +16,10 @@
 
       "cwd": "${workspaceFolder}",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "start:debug"]
+      "runtimeArgs": ["run", "start:debug"],
+      "env": {
+        "LOG_LEVEL": "SILLY"
+      }
     }
   ]
 }

@@ -10,7 +10,6 @@ import { threadId } from 'worker_threads';
 import * as ts from 'typescript';
 import { ModuleMapWorkerJobInput } from './ModuleMapWorkerJobInput';
 import { dirname } from 'path';
-import { getTSConfig } from './TSConfig';
 import { fileURLToPath, pathToFileURL } from 'url';
 import { ResolvedModuleMap } from './ResolvedModuleMap';
 
@@ -45,10 +44,6 @@ const moduleMapQueEvents = new QueueEvents(workerInput.queName, {
   ...workerInput.queueOptions,
 });
 
-logger.silly(`Testing`, {
-  moduleMapQueEvents,
-});
-
 interface ModuleMap {
   filePath: string;
 
@@ -63,10 +58,20 @@ async function discoverModuleMap(
   });
 
   const rootDir = dirname(moduleInput.filePath);
-
-  const tsConfig = getTSConfig(moduleInput.filePath);
   const defaultOptions = ts.getDefaultCompilerOptions();
-  const options = { ...defaultOptions, ...tsConfig };
+  const options: ts.CompilerOptions = {
+    ...defaultOptions,
+    jsxFragmentFactory: 'Fragment',
+    target: ts.ScriptTarget.ESNext,
+    module: ts.ModuleKind.ESNext,
+    moduleResolution: ts.ModuleResolutionKind.NodeJs,
+    allowJs: true,
+    checkJs: false,
+    noEmit: true,
+    noEmitHelpers: true,
+    sourceMap: false,
+    inlineSourceMap: false,
+  };
 
   const compilierHost = ts.createCompilerHost({
     ...options,
@@ -77,7 +82,6 @@ async function discoverModuleMap(
     rootNames: [moduleInput.filePath],
     options: {
       ...options,
-      jsxFragmentFactory: 'Fragment',
     },
     host: compilierHost,
   });
@@ -88,7 +92,19 @@ async function discoverModuleMap(
     throw new Error('Invalid Source File');
   }
 
-  const resolvedArray = Array.from(sourceFile.resolvedModules);
+  logger.silly(`sourceFile: `, {
+    objectName: 'sourceFile',
+    sourceFile: sourceFile.fileName,
+  });
+
+  const resolvedArray = Array.from(
+    sourceFile.resolvedModules ?? new Map<string, ts.ResolvedModuleFull>([]),
+  );
+
+  logger.silly(`Resolved modules array`, {
+    objectName: 'resolvedArray',
+    resolvedArray,
+  });
 
   const importedModules = await Promise.all(
     resolvedArray.map(async ([specifier]) => {
@@ -103,6 +119,14 @@ async function discoverModuleMap(
         specifier,
         parentURI.href,
       );
+
+      if (resolvePathURI.startsWith('node:')) {
+        logger.debug(`resolvePathURI is a node: path`, {
+          objectName: 'resolvePathURI',
+          resolvePathURI,
+        });
+        return;
+      }
 
       logger.silly(`Resolved moduleURI`, {
         specifier,
@@ -136,24 +160,40 @@ async function discoverModuleMap(
         parentURI,
         resolvePathURI,
       });
-      await moduleMapQue.add(
-        workerInput.queName,
-        plainToClass(ModuleMapWorkerJobInput, {
-          filePath,
-          specifier: moduleSpecifier,
-        }),
-        {
-          jobId: filePath,
-        },
-      );
+
+      const jobData = plainToClass(ModuleMapWorkerJobInput, {
+        filePath,
+        specifier: moduleSpecifier,
+      });
+
+      logger.debug(`newJobData: `, {
+        jobData,
+        jobId: filePath,
+      });
+
+      const job = await moduleMapQue.add(workerInput.queName, jobData, {
+        jobId: filePath,
+        lifo: true,
+      });
+
+      logger.silly(`Testing123...`, {
+        test: job.asJSON(),
+      });
+
+      // const output = await job.waitUntilFinished(moduleMapQueEvents);
+      // logger.info(`output shit: `, {
+      //   output,
+      // });
 
       return filePath;
     }),
   );
 
+  logger.silly(`discoverModuleMap(${JSON.stringify(moduleInput)})`);
+
   return {
     filePath: moduleInput.filePath,
-    importedModules,
+    importedModules: importedModules.filter(Boolean) as string[],
   };
 }
 
