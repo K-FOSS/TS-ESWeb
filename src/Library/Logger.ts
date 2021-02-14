@@ -29,9 +29,6 @@ export const logger = winston.createLogger({
   level: getLevel(process.env.LOG_LEVEL),
   defaultMeta: {
     appName: 'TS-ESWeb',
-    get date(): string {
-      return new Date().toLocaleTimeString();
-    },
   },
   transports: [
     //
@@ -49,6 +46,7 @@ export const logger = winston.createLogger({
       format: winston.format.json({}),
       labels: { appName: 'TS-ESWeb' },
       json: false,
+      replaceTimestamp: true,
     }),
   ],
 });

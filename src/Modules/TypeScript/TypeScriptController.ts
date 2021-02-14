@@ -153,4 +153,8 @@ export class TypeScriptController {
 
     throw new Error('Invalid file path');
   }
+
+  public waitForModuleMapDone(): Promise<void> {
+    return this.moduleMapQueue.waitForDone();
+  }
 }

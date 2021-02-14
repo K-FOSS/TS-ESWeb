@@ -101,11 +101,6 @@ async function discoverModuleMap(
     sourceFile.resolvedModules ?? new Map<string, ts.ResolvedModuleFull>([]),
   );
 
-  logger.silly(`Resolved modules array`, {
-    objectName: 'resolvedArray',
-    resolvedArray,
-  });
-
   const importedModules = await Promise.all(
     resolvedArray.map(async ([specifier]) => {
       const parentURI = pathToFileURL(moduleInput.filePath);
@@ -177,7 +172,7 @@ async function discoverModuleMap(
       });
 
       logger.silly(`Testing123...`, {
-        test: job.asJSON(),
+        test: job.id,
       });
 
       // const output = await job.waitUntilFinished(moduleMapQueEvents);
@@ -232,7 +227,7 @@ const moduleWorker = new Worker<ModuleMapWorkerJobInput, ResolvedModuleMap>(
   },
   {
     connection: workerInput.queueOptions.connection,
-    concurrency: 2,
+    concurrency: 3,
   },
 );
 

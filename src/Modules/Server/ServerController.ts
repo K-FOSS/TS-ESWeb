@@ -5,7 +5,6 @@ import hyperid from 'hyperid';
 import { Container, Inject, Service } from 'typedi';
 import { fileURLToPath } from 'url';
 import { logger } from '../../Library/Logger';
-import { timeout } from '../../Utils/timeout';
 import { TypeScriptController } from '../TypeScript/TypeScriptController';
 import { ServerOptions, serverOptionsToken } from './ServerOptions';
 
@@ -60,7 +59,7 @@ export class ServerController {
       ),
     });
 
-    await timeout(60000);
+    await this.typescriptController.waitForModuleMapDone();
 
     const jobOutput = await this.typescriptController.waitForJob(entrypointJob);
 

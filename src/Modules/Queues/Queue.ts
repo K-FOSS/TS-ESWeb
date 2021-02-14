@@ -12,6 +12,8 @@ import { QueueOptions } from './QueueOptions';
 import { ClassConstructor, plainToClass } from 'class-transformer';
 import { Logger } from 'winston';
 import { WorkerInput } from '../TypeScript/WorkerInput';
+import EventEmitter from 'events';
+import pEvent from 'p-event';
 
 /**
  * Task Queue handled by dedicated `worker_threads` created by
@@ -26,6 +28,8 @@ export class Queue<QueueName extends string, JobInput, JobOutput> {
    */
   public queue: BullMQQueue<JobInput, unknown, QueueName>;
   public queueEvents: BullMQQueueEvents;
+
+  private events = new EventEmitter();
 
   /**
    * Array of Child Workers
@@ -97,6 +101,8 @@ export class Queue<QueueName extends string, JobInput, JobOutput> {
     const workerTeminiations = this.workers.map((worker) => worker.terminate());
 
     this.queueEvents.removeListener('drained', this.handleDrained);
+
+    this.events.emit('done');
 
     return Promise.all(workerTeminiations);
   }
@@ -261,5 +267,9 @@ export class Queue<QueueName extends string, JobInput, JobOutput> {
     this.logger.silly(`waitForTask()`);
 
     return task.waitUntilFinished(this.queueEvents) as Promise<T>;
+  }
+
+  public async waitForDone(): Promise<void> {
+    return pEvent(this.events, 'done');
   }
 }
