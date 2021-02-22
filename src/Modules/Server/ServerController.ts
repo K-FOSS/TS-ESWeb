@@ -6,6 +6,7 @@ import { Container, Inject, Service } from 'typedi';
 import { fileURLToPath } from 'url';
 import { logger } from '../../Library/Logger';
 import { TypeScriptController } from '../TypeScript/TypeScriptController';
+import { WebModuleController } from '../WebModule/WebModuleController';
 import { ServerOptions, serverOptionsToken } from './ServerOptions';
 
 @Service()
@@ -14,7 +15,10 @@ export class ServerController {
   public options: ServerOptions;
 
   // eslint-disable-next-line no-useless-constructor
-  public constructor(private typescriptController: TypeScriptController) {}
+  public constructor(
+    private typescriptController: TypeScriptController,
+    private webModuleController: WebModuleController,
+  ) {}
 
   /**
    * Create a new ServerController with the provided Configuration within the TypeDi Container
@@ -51,7 +55,11 @@ export class ServerController {
       `ServerController.startTypeScript() starting TypeScript Module Map`,
     );
 
-    await this.typescriptController.createModuleMapWorkers();
+    await Promise.all([
+      this.typescriptController.createModuleMapWorkers(),
+      this.webModuleController.spawnWebModuleWorkers(),
+      this.typescriptController.createTranspilerWorkers(),
+    ]);
 
     const entrypointJob = await this.typescriptController.createModuleMapTask({
       filePath: fileURLToPath(
@@ -61,34 +69,28 @@ export class ServerController {
 
     await this.typescriptController.waitForModuleMapDone();
 
-    const jobOutput = await this.typescriptController.waitForJob(entrypointJob);
+    await this.typescriptController.waitForJob(entrypointJob);
 
-    const typescriptController = this.typescriptController;
+    // const typescriptController = this.typescriptController;
 
-    async function getAllChildModules(filePath: string): Promise<string[]> {
-      const job = await typescriptController.getModuleMap(filePath);
+    // async function getAllChildModules(filePath: string): Promise<string[]> {
+    //   const job = await typescriptController.getModuleMap(filePath);
 
-      const fullModules = [...job.importedModules];
+    //   const fullModules = [...job.importedModules];
 
-      const childModules = job.importedModules ?? [];
+    //   const childModules = job.importedModules ?? [];
 
-      for (const importedModule of childModules) {
-        if (importedModule === null) {
-          continue;
-        }
+    //   for (const importedModule of childModules) {
+    //     if (importedModule === null) {
+    //       continue;
+    //     }
 
-        fullModules.push(...(await getAllChildModules(importedModule)));
-      }
+    //     fullModules.push(...(await getAllChildModules(importedModule)));
+    //   }
 
-      return [filePath, ...fullModules];
-    }
+    //   return [filePath, ...fullModules];
+    // }
 
-    const moduleFiles = await getAllChildModules(jobOutput.filePath);
-
-    logger.silly('Output', moduleFiles);
-
-    logger.info(`ServerController.startTypeScript() jobOutput: `, {
-      jobOutput,
-    });
+    // const moduleFiles = await getAllChildModules(jobOutput.filePath);
   }
 }

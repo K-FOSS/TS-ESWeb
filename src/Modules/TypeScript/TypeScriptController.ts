@@ -8,7 +8,6 @@ import { QueueController } from '../Queues/QueueController';
 import { ServerOptions, serverOptionsToken } from '../Server/ServerOptions';
 import { ModuleMapWorkerJobInput } from './ModuleMapWorkerJobInput';
 import { ResolvedModuleMap } from './ResolvedModuleMap';
-import { TranspiledModuleOutput } from './TranspiledModuleOutput';
 import { TranspilerWorkerJobInput } from './TranspilerWorkerJobInput';
 
 @Service()
@@ -18,18 +17,13 @@ export class TypeScriptController {
    */
   private transpilerQueue: Queue<
     'typescriptTranspiler',
-    TranspilerWorkerJobInput,
-    TranspiledModuleOutput
+    TranspilerWorkerJobInput
   >;
 
   /**
    * Module Map Que and Workers for determining all imported and related modules and files
    */
-  private moduleMapQueue: Queue<
-    'typescriptModuleMap',
-    ModuleMapWorkerJobInput,
-    ResolvedModuleMap
-  >;
+  private moduleMapQueue: Queue<'typescriptModuleMap', ModuleMapWorkerJobInput>;
 
   public constructor(
     @Inject(serverOptionsToken)
@@ -45,13 +39,21 @@ export class TypeScriptController {
     this.transpilerQueue = this.queueController.createQueue(
       typescriptTranspilerKey,
       TranspilerWorkerJobInput,
-      TranspiledModuleOutput,
     );
+
+    this.transpilerQueue.queueEvents.on('completed', (job) => {
+      logger.silly(`Transpiler Que Responds with`, {
+        jobId: job.jobId,
+        labels: {
+          queue: 'transpilerQueue',
+          appName: 'TS-ESWeb',
+        },
+      });
+    });
 
     this.moduleMapQueue = this.queueController.createQueue(
       moduleMapQueKey,
       ModuleMapWorkerJobInput,
-      ResolvedModuleMap,
     );
   }
 

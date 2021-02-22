@@ -1,18 +1,24 @@
-// src/Modules/TypeScript/TypeScriptWorker.ts
+// src/Modules/TypeScript/TypeScriptTranspilerWorker.ts
 import { getWorkerData } from '@k-foss/ts-worker';
 import '../../Utils/Setup';
 import { plainToClass } from 'class-transformer';
 import { Worker } from 'bullmq';
 import { logger as coreLogger } from '../../Library/Logger';
-import { WorkerInput } from './WorkerInput';
+import {
+  transpileModule,
+  ModuleKind,
+  ScriptTarget,
+  ScriptKind,
+  ModuleResolutionKind,
+} from 'typescript';
+import { WorkerInput } from '../Queues/WorkerInput';
 import { validateOrReject } from 'class-validator';
 import { TranspilerWorkerJobInput } from './TranspilerWorkerJobInput';
 import { readFile } from 'fs/promises';
 import { threadId } from 'worker_threads';
 
 const logger = coreLogger.child({
-  workerFile: 'TypeScriptTranspilerWorker.ts',
-  workerId: threadId,
+  labels: { worker: 'TypeScriptTranspilerWorker.ts', workeId: threadId },
 });
 
 logger.info(`Worker starting`);
@@ -42,12 +48,24 @@ async function transformFile(filePath: string): Promise<string> {
 
   const file = await readFile(filePath);
 
-  logger.debug(`Opened file`, {
-    filePath,
-    file,
+  const transpiledModule = transpileModule(file.toString(), {
+    compilerOptions: {
+      allowJs: true,
+      checkJs: false,
+      module: ModuleKind.ESNext,
+      moduleResolution: ModuleResolutionKind.NodeJs,
+      target: ScriptTarget.ESNext,
+      isolatedModules: true,
+      inlineSourceMap: true,
+    },
   });
 
-  return `console.log('helloWorld')`;
+  logger.silly(`Transpiled Module`, {
+    filePath,
+    transpiledModule: transpiledModule.outputText,
+  });
+
+  return transpiledModule.outputText;
 }
 
 const transpilerWorker = new Worker<TranspilerWorkerJobInput>(
@@ -77,17 +95,11 @@ const transpilerWorker = new Worker<TranspilerWorkerJobInput>(
       jobInput,
     });
 
-    const transformedModule = await transformFile(jobInput.filePath);
-
-    logger.debug(`transpilerWorker transformedModule: ${transformedModule}`);
-
-    return {
-      test: 'shti',
-    };
+    return transformFile(jobInput.filePath);
   },
   {
     connection: workerInput.queueOptions.connection,
-    concurrency: 2,
+    concurrency: workerInput.workerCount,
   },
 );
 

@@ -1,5 +1,7 @@
 // src/Modules/TypeScript/ModuleMapWorkerJobInput.ts
-import { IsOptional, IsString } from 'class-validator';
+import { plainToClass } from 'class-transformer';
+import { IsOptional, IsString, validateOrReject } from 'class-validator';
+import { logger } from '../../Library/Logger';
 
 export class ModuleMapWorkerJobInput {
   @IsString()
@@ -8,4 +10,17 @@ export class ModuleMapWorkerJobInput {
   @IsString()
   @IsOptional()
   public specifier?: string;
+
+  public static async createModuleMapJobInput(
+    inputParams: Partial<ModuleMapWorkerJobInput>,
+  ): Promise<ModuleMapWorkerJobInput> {
+    logger.silly(`ModuleMapWorkerJobInput.createModuleMapJobInput()`, {
+      inputParams,
+    });
+
+    const jobInput = plainToClass(ModuleMapWorkerJobInput, inputParams);
+    await validateOrReject(jobInput);
+
+    return jobInput;
+  }
 }

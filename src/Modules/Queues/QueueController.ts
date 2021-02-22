@@ -25,17 +25,15 @@ export class QueueController {
    * Create a new Queue
    * @param queKey Queue key
    */
-  public createQueue<QueueName extends string, T1, T2>(
+  public createQueue<QueueName extends string, T1>(
     name: QueueName,
     inputClass: ClassConstructor<T1>,
-    outputClass: ClassConstructor<T2>,
-  ): Queue<QueueName, T1, T2> {
+  ): Queue<QueueName, T1> {
     const bullOptions = this.createBullOptions();
 
     return new Queue({
       name,
       bullOptions,
-      outputClass,
       inputClass,
     });
   }

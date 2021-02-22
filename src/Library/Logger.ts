@@ -44,8 +44,7 @@ export const logger = winston.createLogger({
     new LokiTransport({
       host: 'http://Loki:3100',
       format: winston.format.json({}),
-      labels: { appName: 'TS-ESWeb' },
-      json: false,
+      json: true,
       replaceTimestamp: true,
     }),
   ],

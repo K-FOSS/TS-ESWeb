@@ -11,7 +11,7 @@ import { logger } from '../../Library/Logger';
 import { QueueOptions } from './QueueOptions';
 import { ClassConstructor, plainToClass } from 'class-transformer';
 import { Logger } from 'winston';
-import { WorkerInput } from '../TypeScript/WorkerInput';
+import { WorkerInput } from './WorkerInput';
 import EventEmitter from 'events';
 import pEvent from 'p-event';
 
@@ -22,7 +22,7 @@ import pEvent from 'p-event';
  * The Queue is handled by [`bullmq`](https://www.npmjs.com/package/bullmq) with
  * a Redis backend
  */
-export class Queue<QueueName extends string, JobInput, JobOutput> {
+export class Queue<QueueName extends string, JobInput> {
   /**
    * BullMQ Queue and QueueEvents object
    */
@@ -34,12 +34,12 @@ export class Queue<QueueName extends string, JobInput, JobOutput> {
   /**
    * Array of Child Workers
    */
-  public workers: Worker[] = [];
+  private workers: Worker[] = [];
 
   /**
    * Boolean value if a single job has been created.
    */
-  public hasRun = false;
+  private hasRun = false;
 
   /**
    * Node.JS Interval to check if there are any active jobs if not,
@@ -47,25 +47,15 @@ export class Queue<QueueName extends string, JobInput, JobOutput> {
    */
   public checkInterval: NodeJS.Timeout;
 
-  public options: QueueOptions<
-    QueueName,
-    ClassConstructor<JobInput>,
-    ClassConstructor<JobOutput>
-  >;
+  public options: QueueOptions<QueueName, ClassConstructor<JobInput>>;
 
   /**
    * Local logger object adding additional metadata
    */
   private logger: Logger;
 
-  public startDate = Date.now();
-
   public constructor(
-    options: QueueOptions<
-      QueueName,
-      ClassConstructor<JobInput>,
-      ClassConstructor<JobOutput>
-    >,
+    options: QueueOptions<QueueName, ClassConstructor<JobInput>>,
   ) {
     this.queue = new BullMQQueue(options.name, options.bullOptions);
     this.queueEvents = new BullMQQueueEvents(options.name, options.bullOptions);
@@ -76,7 +66,7 @@ export class Queue<QueueName extends string, JobInput, JobOutput> {
       queName: this.queue.name,
     });
 
-    this.handleError = (args): void => {
+    this.handleError = (...args): void => {
       this.logger.info(`Que has errored`, {
         ...args,
       });
@@ -123,16 +113,19 @@ export class Queue<QueueName extends string, JobInput, JobOutput> {
     ]);
   }
 
+  private async getCounts(): Promise<number[]> {
+    return Promise.all([
+      this.queue.getDelayedCount(),
+      this.queue.getActiveCount(),
+      this.queue.getFailedCount(),
+    ]);
+  }
+
   /**
    * Check if there are any active jobs/tasks
    */
   private async isRunningJobs(): Promise<number[] | void> {
-    const jobCounts = await Promise.all([
-      this.queue.getDelayedCount(),
-      this.queue.getActiveCount(),
-      this.queue.getFailedCount(),
-      this.queue.getFailed(),
-    ]);
+    const jobCounts = await this.getCounts();
 
     this.logger.silly(`jobCounts: `, {
       jobCounts,
@@ -163,6 +156,8 @@ export class Queue<QueueName extends string, JobInput, JobOutput> {
   private startWatching(): void {
     this.handleDrained = (): void => {
       this.isRunningJobs().catch(() => {
+        this.logger.silly('Error isRunningJobs, terminating workers');
+
         return this.terminateWorkers();
       });
     };
@@ -184,30 +179,36 @@ export class Queue<QueueName extends string, JobInput, JobOutput> {
    * const workerPath = fileURLToPath(workerPathURI);
    *
    * await moduleMapQueue.createWorkers(workerPath);
-   *
    * ```
    *
    * @returns Promise resolving once the workers threads have all been created
    */
-  public async createWorkers(workerPath: string): Promise<void> {
+  public async createWorkers(
+    workerPath: string,
+    workerCount = 3,
+  ): Promise<void> {
     this.logger.debug(`Queue.createWorkers('${workerPath}')`);
 
     this.logger.debug(`Queue.createWorkers() cleaning old jobs`);
 
     await this.cleanQueue();
 
-    const workerInput: WorkerInput = {
+    const workerInputParams: WorkerInput = {
       queueOptions: this.queue.opts,
       queName: this.queue.name,
+      workerCount,
     };
 
-    for (const _workerThread of Array(6).fill(0)) {
+    this.logger.silly(`workerInputParams: `, {
+      workerInputParams,
+    });
+
+    const workerInput = plainToClass(WorkerInput, workerInputParams);
+
+    for (const _workerThread of Array(workerInputParams.workerCount).fill(0)) {
       this.logger.info(`Queue.createWorkers() spawning worker`);
 
-      const worker = spawnWorker(
-        workerPath,
-        plainToClass(WorkerInput, workerInput),
-      );
+      const worker = spawnWorker(workerPath, workerInput);
 
       worker.on('error', (err) => {
         this.logger.error(`Worker thread has errored`, {
