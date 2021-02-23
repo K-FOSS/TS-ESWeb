@@ -6,7 +6,6 @@ export class WebModule {
   @Field()
   public filePath: string;
 
-  public constructor(opts: Partial<WebModule> = {}) {
-    Object.assign(this, opts);
-  }
+  @Field()
+  public code: string;
 }

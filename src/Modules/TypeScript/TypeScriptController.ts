@@ -35,15 +35,15 @@ export class TypeScriptController {
     const typescriptTranspilerKey = 'typescriptTranspiler';
     const moduleMapQueKey = 'typescriptModuleMap';
 
-    this.transpilerQueue = this.queueController.createQueue(
-      typescriptTranspilerKey,
-      TranspilerWorkerJobInput,
-    );
+    this.transpilerQueue = this.queueController.createQueue({
+      name: typescriptTranspilerKey,
+      inputClass: TranspilerWorkerJobInput,
+    });
 
-    this.moduleMapQueue = this.queueController.createQueue(
-      moduleMapQueKey,
-      ModuleMapWorkerJobInput,
-    );
+    this.moduleMapQueue = this.queueController.createQueue({
+      name: moduleMapQueKey,
+      inputClass: ModuleMapWorkerJobInput,
+    });
   }
 
   /**

@@ -8,7 +8,9 @@ import {
   validateOrReject,
 } from 'class-validator';
 import IORedis from 'ioredis';
+import { Inject, Service } from 'typedi';
 import { logger } from '../../Library/Logger';
+import { ServerOptions, serverOptionsToken } from '../Server/ServerOptions';
 import { RedisType } from './RedisTypes';
 
 export class SetValueInput {
@@ -21,6 +23,7 @@ export class SetValueInput {
   public value: string | string[];
 }
 
+@Service()
 export class RedisController {
   /**
    * Redis Instance
@@ -53,8 +56,8 @@ export class RedisController {
     return pipeline.exec();
   }
 
-  public constructor(options: IORedis.RedisOptions) {
-    this.IORedis = new IORedis(options);
+  public constructor(@Inject(serverOptionsToken) options: ServerOptions) {
+    this.IORedis = new IORedis(options.redis);
 
     process.on('exit', () => {
       // Do some cleanup such as close db

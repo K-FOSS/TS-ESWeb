@@ -14,6 +14,7 @@ import { Logger } from 'winston';
 import { WorkerInput } from './WorkerInput';
 import EventEmitter from 'events';
 import pEvent from 'p-event';
+import { fileURLToPath } from 'node:url';
 
 /**
  * Task Queue handled by dedicated `worker_threads` created by
@@ -186,19 +187,23 @@ export class Queue<QueueName extends string, JobInput> {
    * @returns Promise resolving once the workers threads have all been created
    */
   public async createWorkers(
-    workerPath: string,
-    workerCount = 3,
+    subWorkerPath: string,
+    workerCount = 2,
   ): Promise<void> {
-    this.logger.debug(`Queue.createWorkers('${workerPath}')`);
+    this.logger.debug(
+      `Queue.createWorkers('${subWorkerPath}', ${workerCount})`,
+    );
 
     this.logger.debug(`Queue.createWorkers() cleaning old jobs`);
 
     await this.cleanQueue();
 
     const workerInputParams: WorkerInput = {
+      serverOptions: this.options.serverOptions,
       queueOptions: this.queue.opts,
       queName: this.queue.name,
       workerCount,
+      workerPath: subWorkerPath,
     };
 
     this.logger.silly(`workerInputParams: `, {
@@ -206,6 +211,9 @@ export class Queue<QueueName extends string, JobInput> {
     });
 
     const workerInput = plainToClass(WorkerInput, workerInputParams);
+
+    const workerPathURI = await import.meta.resolve('./Worker');
+    const workerPath = fileURLToPath(workerPathURI);
 
     for (const _workerThread of Array(workerInputParams.workerCount).fill(0)) {
       this.logger.info(`Queue.createWorkers() spawning worker`);

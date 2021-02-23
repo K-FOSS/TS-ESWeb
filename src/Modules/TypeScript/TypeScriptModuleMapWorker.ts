@@ -1,5 +1,4 @@
 // src/Modules/TypeScript/TypeScriptModuleMapWorker.ts
-import { getWorkerData } from '@k-foss/ts-worker';
 import { Queue, Worker } from 'bullmq';
 import { dirname } from 'path';
 import * as ts from 'typescript';
@@ -7,27 +6,36 @@ import { fileURLToPath, pathToFileURL } from 'url';
 import { threadId } from 'worker_threads';
 import { logger as coreLogger } from '../../Library/Logger';
 import { envMode } from '../../Utils/Environment';
-import '../../Utils/Setup';
-import { WorkerInput } from '../Queues/WorkerInput';
+import { workerInputToken } from '../Queues/WorkerInput';
 import { WebModuleMapJobInput } from '../WebModule/WebModuleMapJobInput';
 import { ModuleMapWorkerJobInput } from './ModuleMapWorkerJobInput';
 import { TranspilerWorkerJobInput } from './TranspilerWorkerJobInput';
 import { createTypeScriptProgram, isCommonJSImportSplit } from './Utils';
 import { RedisController } from '../Redis/RedisController';
 import { RedisType } from '../Redis/RedisTypes';
+import Container from 'typedi';
+import { QueueController } from '../Queues/QueueController';
+import { queueToken } from '../Queues/QueueToken';
 
 const logger = coreLogger.child({
   labels: { worker: 'TypeScriptModuleMapWorker.ts', workerId: threadId },
 });
 
-logger.info(`Worker starting`);
+logger.info(`Worker starting`, {
+  labels: {
+    worker: 'TypeScriptModuleMapWorker.ts',
+    workerId: threadId,
+  },
+});
 
-const workerInput = await WorkerInput.createWorkerInput(
-  getWorkerData(import.meta.url),
-);
+const queueController = Container.get(QueueController);
+
+const queueName = Container.get(queueToken);
+const workerInput = Container.get(workerInputToken);
 
 logger.silly(`workerInput`, {
-  workerInput,
+  queueController,
+  queueName,
 });
 
 const webModuleMapQue = new Queue('webModuleMapQueue', {
@@ -38,13 +46,11 @@ const transpilerQue = new Queue('typescriptTranspiler', {
   ...workerInput.queueOptions,
 });
 
-const moduleMapQue = new Queue(workerInput.queName, {
+const moduleMapQue = new Queue(queueName, {
   ...workerInput.queueOptions,
 });
 
-const redisController = new RedisController({
-  ...(workerInput.queueOptions.connection as { host: string }),
-});
+const redisController = Container.get(RedisController);
 
 /**
  * Discover all imported modules and add to the TypeScript Module Map
@@ -216,9 +222,12 @@ async function discoverModuleMap(
     }),
   );
 
+  const specifierCore = moduleInput.specifier || moduleInput.filePath;
+  const specifier = specifierCore.replace('.tsx', '');
+
   const webModuleJobInputParams: WebModuleMapJobInput = {
     filePath: moduleInput.filePath,
-    specifier: moduleInput.specifier,
+    specifier,
     importedModules: importedModules.filter(Boolean) as string[],
   };
 
@@ -239,6 +248,11 @@ async function discoverModuleMap(
 
   await redisController.IORedis.set(
     redisController.getRedisKey(RedisType.MODULE_MAP, moduleInput.filePath),
+    JSON.stringify(webModuleJobInputParams),
+  );
+
+  await redisController.IORedis.set(
+    redisController.getRedisKey(RedisType.MODULE_MAP, specifier),
     JSON.stringify(webModuleJobInputParams),
   );
 

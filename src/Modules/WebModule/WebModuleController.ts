@@ -9,17 +9,20 @@ import { WebModuleMapJobInput } from './WebModuleMapJobInput';
 
 @Service()
 export class WebModuleController {
+  /**
+   * Redis Queue for Web Module Map Discovery Tasks
+   */
   private webModuleMapQueue: Queue<'webModuleMapQueue', WebModuleMapJobInput>;
 
   public constructor(
     @Inject(() => QueueController)
     private queueController: QueueController,
   ) {
-    this.webModuleMapQueue = queueController.createQueue(
-      'webModuleMapQueue',
-      WebModuleMapJobInput,
-      true,
-    );
+    this.webModuleMapQueue = queueController.createQueue({
+      name: 'webModuleMapQueue',
+      inputClass: WebModuleMapJobInput,
+      disableTermination: true,
+    });
   }
 
   /**

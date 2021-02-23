@@ -31,7 +31,7 @@ workbox.routing.registerRoute(
       apiHeaders.set('content-type', 'application/json');
 
       const request = new Request('/graphql', {
-        body: `{"operationName":"webModule","variables":{"moduleSpecifier":"${moduleSpecifier}"},"query":"query webModule($moduleSpecifier: String!) { webModule(filter: {specifier: $moduleSpecifier}) {    filePath    specifiers code  }}"}`,
+        body: `{"operationName":"webModule","variables":{"moduleSpecifier":"${moduleSpecifier}"},"query":"query webModule($moduleSpecifier: String!) { webModule(filter: {specifier: $moduleSpecifier}) {    filePath code  }}"}`,
         method: 'POST',
         headers: apiHeaders,
       });

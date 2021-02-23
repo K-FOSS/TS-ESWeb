@@ -19,6 +19,12 @@ export class ImportTransformer extends Transformer {
           const argument = node.arguments[0];
 
           if (ts.isStringLiteral(argument)) {
+            logger.silly(`ImportTransformer isCallExpression:`, {
+              argument: argument.text,
+              dirName: dirname(sourceFile.fileName),
+              fileName: sourceFile.fileName,
+            });
+
             return context.factory.updateCallExpression(
               node,
               node.expression,
@@ -65,11 +71,7 @@ export class ImportTransformer extends Transformer {
               node.moduleSpecifier.text,
             );
           } else {
-            if (node.moduleSpecifier.text === 'react/jsx-dev-runtime') {
-              specifier = 'react/cjs/react-jsx-dev-runtime.development';
-            } else {
-              specifier = node.moduleSpecifier.text;
-            }
+            specifier = node.moduleSpecifier.text;
           }
 
           let importClause: ts.ImportClause | undefined;

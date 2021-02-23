@@ -2,12 +2,27 @@
 import type { QueueOptions } from 'bullmq';
 import { plainToClass, Transform } from 'class-transformer';
 import { IsInt, IsString, validateOrReject } from 'class-validator';
+import { Token } from 'typedi';
 import { logger } from '../../Library/Logger';
+import { ServerOptions } from '../Server/ServerOptions';
 
 export class WorkerInput {
   @Transform(({ value }) => {
     if (typeof value === 'string') {
-      logger.debug(`WorkerInput.queueOptions is string`, {
+      logger.silly(`WorkerInput.serverOptions is string`, {
+        value,
+      });
+
+      return JSON.parse(value) as ServerOptions;
+    }
+
+    return JSON.stringify(value);
+  })
+  public serverOptions: ServerOptions;
+
+  @Transform(({ value }) => {
+    if (typeof value === 'string') {
+      logger.silly(`WorkerInput.queueOptions is string`, {
         value,
       });
 
@@ -17,6 +32,9 @@ export class WorkerInput {
     return JSON.stringify(value);
   })
   public queueOptions: QueueOptions;
+
+  @IsString()
+  public workerPath: string;
 
   /**
    * Name of the TypeScript Transpiler Que for this worker
@@ -46,3 +64,5 @@ export class WorkerInput {
     return jobInput;
   }
 }
+
+export const workerInputToken = new Token<WorkerInput>('workerInput');

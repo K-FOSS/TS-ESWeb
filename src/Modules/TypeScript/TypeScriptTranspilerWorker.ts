@@ -1,36 +1,45 @@
 // src/Modules/TypeScript/TypeScriptTranspilerWorker.ts
-import { getWorkerData } from '@k-foss/ts-worker';
-import '../../Utils/Setup';
-import { plainToClass } from 'class-transformer';
 import { Worker } from 'bullmq';
-import { logger as coreLogger } from '../../Library/Logger';
-import {
-  transpileModule,
-  ModuleKind,
-  ScriptTarget,
-  ModuleResolutionKind,
-} from 'typescript';
-import { WorkerInput } from '../Queues/WorkerInput';
+import { cjsToEsmTransformerFactory } from 'cjstoesm';
+import { plainToClass } from 'class-transformer';
 import { validateOrReject } from 'class-validator';
-import { TranspilerWorkerJobInput } from './TranspilerWorkerJobInput';
 import { readFile } from 'fs/promises';
+import Container from 'typedi';
+import {
+  JsxEmit,
+  ModuleKind,
+  ModuleResolutionKind,
+  ScriptTarget,
+  transpileModule,
+} from 'typescript';
 import { threadId } from 'worker_threads';
+import { logger as coreLogger } from '../../Library/Logger';
+import { processModule } from '../Files/processModule';
+// import { QueueController } from '../Queues/QueueController';
+import { queueToken } from '../Queues/QueueToken';
+import { workerInputToken } from '../Queues/WorkerInput';
 import { RedisController } from '../Redis/RedisController';
 import { RedisType } from '../Redis/RedisTypes';
+import { ImportTransformer } from '../WebModule/ImportTransformer';
+import { TranspilerWorkerJobInput } from './TranspilerWorkerJobInput';
 
 const logger = coreLogger.child({
   labels: { worker: 'TypeScriptTranspilerWorker.ts', workeId: threadId },
 });
 
-logger.info(`Worker starting`);
-
-const workerInput = await WorkerInput.createWorkerInput(
-  getWorkerData(import.meta.url),
-);
-
-const redisController = new RedisController({
-  ...(workerInput.queueOptions.connection as { host: string }),
+logger.info(`Worker starting`, {
+  labels: {
+    worker: 'TypeScriptTranspilerWorker.ts',
+    workeId: threadId,
+  },
 });
+
+// const queueController = Container.get(QueueController);
+
+const queueName = Container.get(queueToken);
+const workerInput = Container.get(workerInputToken);
+
+const redisController = Container.get(RedisController);
 
 logger.debug(`Retrieved workerData:`, {
   objectName: 'workerInput',
@@ -51,15 +60,26 @@ async function transformFile(filePath: string): Promise<string> {
 
   const file = await readFile(filePath);
 
-  const transpiledModule = transpileModule(file.toString(), {
+  let fileContents = processModule(file.toString());
+
+  const transpiledModule = transpileModule(fileContents, {
+    fileName: filePath,
+    transformers: {
+      before: [cjsToEsmTransformerFactory()],
+      after: [new ImportTransformer().after],
+      afterDeclarations: [
+        // ...
+      ],
+    },
     compilerOptions: {
       allowJs: true,
       checkJs: false,
       module: ModuleKind.ESNext,
       moduleResolution: ModuleResolutionKind.NodeJs,
       target: ScriptTarget.ESNext,
-      isolatedModules: true,
       inlineSourceMap: true,
+      jsx: JsxEmit.ReactJSXDev,
+      jsxFragmentFactory: 'Fragment',
     },
   });
 
@@ -67,7 +87,7 @@ async function transformFile(filePath: string): Promise<string> {
 }
 
 const transpilerWorker = new Worker<TranspilerWorkerJobInput>(
-  workerInput.queName,
+  queueName,
   async (job) => {
     logger.info(`Recieved a task for transpilerWorker`, {
       worker: 'transpilerWorker',
