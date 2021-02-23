@@ -7,7 +7,6 @@ import { Queue } from '../Queues/Queue';
 import { QueueController } from '../Queues/QueueController';
 import { ServerOptions, serverOptionsToken } from '../Server/ServerOptions';
 import { ModuleMapWorkerJobInput } from './ModuleMapWorkerJobInput';
-import { ResolvedModuleMap } from './ResolvedModuleMap';
 import { TranspilerWorkerJobInput } from './TranspilerWorkerJobInput';
 
 @Service()
@@ -41,16 +40,6 @@ export class TypeScriptController {
       TranspilerWorkerJobInput,
     );
 
-    this.transpilerQueue.queueEvents.on('completed', (job) => {
-      logger.silly(`Transpiler Que Responds with`, {
-        jobId: job.jobId,
-        labels: {
-          queue: 'transpilerQueue',
-          appName: 'TS-ESWeb',
-        },
-      });
-    });
-
     this.moduleMapQueue = this.queueController.createQueue(
       moduleMapQueKey,
       ModuleMapWorkerJobInput,
@@ -82,7 +71,7 @@ export class TypeScriptController {
    * Spawn the TypeScript Transpiler Workers
    */
   public async createTranspilerWorkers(): Promise<void> {
-    logger.info(`TypeScriptController.createTranspilerWorkers()`);
+    logger.debug(`TypeScriptController.createTranspilerWorkers()`);
 
     const workerPathURI = await import.meta.resolve(
       './TypeScriptTranspilerWorker',
@@ -91,7 +80,7 @@ export class TypeScriptController {
 
     await this.transpilerQueue.createWorkers(workerPath);
 
-    logger.debug(
+    logger.silly(
       `TypeScriptController.createTranspilerWorkers() workerPathURI: ${workerPathURI}`,
     );
   }
@@ -134,29 +123,11 @@ export class TypeScriptController {
     });
   }
 
-  public async waitForJob(job: Job): Promise<ResolvedModuleMap> {
-    return this.moduleMapQueue.waitForTask(job);
-  }
-
-  public async getModuleMap(filePath: string): Promise<ResolvedModuleMap> {
-    const job = await this.moduleMapQueue.queue.getJob(filePath);
-
-    if (job?.returnvalue) {
-      logger.silly(`job?.returnValue: `, {
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-        returnValue: job.returnvalue,
-      });
-
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-return
-      return job?.returnvalue;
-    } else {
-      logger.warn(`getModuleMap(${filePath}) failed`);
-    }
-
-    throw new Error('Invalid file path');
-  }
-
   public waitForModuleMapDone(): Promise<void> {
     return this.moduleMapQueue.waitForDone();
+  }
+
+  public waitForTranspileDone(): Promise<void> {
+    return this.transpilerQueue.waitForDone();
   }
 }

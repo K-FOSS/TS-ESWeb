@@ -28,6 +28,7 @@ export class QueueController {
   public createQueue<QueueName extends string, T1>(
     name: QueueName,
     inputClass: ClassConstructor<T1>,
+    disableTermination?: boolean,
   ): Queue<QueueName, T1> {
     const bullOptions = this.createBullOptions();
 
@@ -35,6 +36,7 @@ export class QueueController {
       name,
       bullOptions,
       inputClass,
+      disableTermination,
     });
   }
 }

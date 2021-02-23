@@ -142,7 +142,7 @@ export class Queue<QueueName extends string, JobInput> {
     }
 
     if (anyJobs === false) {
-      logger.silly('Terminating workers');
+      this.logger.silly('Terminating workers');
 
       return this.terminateWorkers();
     }
@@ -154,15 +154,17 @@ export class Queue<QueueName extends string, JobInput> {
    * Start watching workers for active tasks and kill workers upon empty Queue
    */
   private startWatching(): void {
-    this.handleDrained = (): void => {
-      this.isRunningJobs().catch(() => {
-        this.logger.silly('Error isRunningJobs, terminating workers');
+    if (this.options.disableTermination !== true) {
+      this.handleDrained = (): void => {
+        this.isRunningJobs().catch(() => {
+          this.logger.silly('Error isRunningJobs, terminating workers');
 
-        return this.terminateWorkers();
-      });
-    };
+          return this.terminateWorkers();
+        });
+      };
 
-    this.queueEvents.on('drained', this.handleDrained);
+      this.queueEvents.on('drained', this.handleDrained);
+    }
   }
 
   /**

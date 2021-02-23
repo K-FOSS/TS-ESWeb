@@ -1,19 +1,13 @@
-// src/Modules/WebModules/WebModuleJobInput.ts
+// src/Modules/WebModule/WebModuleJobInput.ts
 import { plainToClass } from 'class-transformer';
-import { IsOptional, IsString, validateOrReject } from 'class-validator';
+import { IsString, validateOrReject } from 'class-validator';
 
 export class WebModuleJobInput {
   @IsString()
   public filePath: string;
 
   @IsString()
-  @IsOptional()
-  public specifier?: string;
-
-  @IsString({
-    each: true,
-  })
-  public importedModules?: string[];
+  public sourceText: string;
 
   public static async createWebModuleJobInput(
     inputParams: Partial<WebModuleJobInput>,

@@ -2,13 +2,12 @@
 import { getWorkerData } from '@k-foss/ts-worker';
 import '../../Utils/Setup';
 import { plainToClass } from 'class-transformer';
-import { Worker } from 'bullmq';
+import { Queue, Worker } from 'bullmq';
 import { logger as coreLogger } from '../../Library/Logger';
 import {
   transpileModule,
   ModuleKind,
   ScriptTarget,
-  ScriptKind,
   ModuleResolutionKind,
 } from 'typescript';
 import { WorkerInput } from '../Queues/WorkerInput';
@@ -16,6 +15,8 @@ import { validateOrReject } from 'class-validator';
 import { TranspilerWorkerJobInput } from './TranspilerWorkerJobInput';
 import { readFile } from 'fs/promises';
 import { threadId } from 'worker_threads';
+import { RedisController } from '../Redis/RedisController';
+import { RedisType } from '../Redis/RedisTypes';
 
 const logger = coreLogger.child({
   labels: { worker: 'TypeScriptTranspilerWorker.ts', workeId: threadId },
@@ -23,22 +24,24 @@ const logger = coreLogger.child({
 
 logger.info(`Worker starting`);
 
-const data = getWorkerData(import.meta.url);
+const workerInput = await WorkerInput.createWorkerInput(
+  getWorkerData(import.meta.url),
+);
 
-logger.debug(`Retrieved workerData:`, {
-  objectName: 'data',
-  data,
+const redisController = new RedisController({
+  ...(workerInput.queueOptions.connection as { host: string }),
 });
 
-const workerInput = plainToClass(WorkerInput, data);
-
-logger.debug(`Transformed to class`, {
+logger.debug(`Retrieved workerData:`, {
   objectName: 'workerInput',
   workerInput,
 });
 
-await validateOrReject(workerInput);
-
+/**
+ * Transform provided filepath to ESM with TypeScript Compiler API
+ * @param filePath Path to file to load, transform, and transpile to ESM
+ * @returns Promise resolving to string of tranformed file.
+ */
 async function transformFile(filePath: string): Promise<string> {
   logger.info(`Transforming ${filePath}`);
 
@@ -58,11 +61,6 @@ async function transformFile(filePath: string): Promise<string> {
       isolatedModules: true,
       inlineSourceMap: true,
     },
-  });
-
-  logger.silly(`Transpiled Module`, {
-    filePath,
-    transpiledModule: transpiledModule.outputText,
   });
 
   return transpiledModule.outputText;
@@ -95,11 +93,19 @@ const transpilerWorker = new Worker<TranspilerWorkerJobInput>(
       jobInput,
     });
 
-    return transformFile(jobInput.filePath);
+    const sourceText = await transformFile(jobInput.filePath);
+
+    await redisController.setValue(RedisType.MODULE, {
+      key: jobInput.filePath,
+      value: sourceText,
+    });
+
+    logger.silly('Done', {
+      filePath: jobInput.filePath,
+    });
   },
   {
     connection: workerInput.queueOptions.connection,
-    concurrency: workerInput.workerCount,
   },
 );
 

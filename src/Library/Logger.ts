@@ -29,6 +29,9 @@ export const logger = winston.createLogger({
   level: getLevel(process.env.LOG_LEVEL),
   defaultMeta: {
     appName: 'TS-ESWeb',
+    labels: {
+      appName: 'TS-ESWeb',
+    },
   },
   transports: [
     //
@@ -45,6 +48,7 @@ export const logger = winston.createLogger({
       host: 'http://Loki:3100',
       format: winston.format.json({}),
       json: true,
+      level: 'silly',
       replaceTimestamp: true,
     }),
   ],

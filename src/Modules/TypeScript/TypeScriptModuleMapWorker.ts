@@ -9,7 +9,7 @@ import { logger as coreLogger } from '../../Library/Logger';
 import { envMode } from '../../Utils/Environment';
 import '../../Utils/Setup';
 import { WorkerInput } from '../Queues/WorkerInput';
-import { WebModuleJobInput } from '../WebModule/WebModuleJobInput';
+import { WebModuleMapJobInput } from '../WebModule/WebModuleMapJobInput';
 import { ModuleMapWorkerJobInput } from './ModuleMapWorkerJobInput';
 import { TranspilerWorkerJobInput } from './TranspilerWorkerJobInput';
 import { createTypeScriptProgram, isCommonJSImportSplit } from './Utils';
@@ -28,7 +28,7 @@ logger.silly(`workerInput`, {
   workerInput,
 });
 
-const webModuleQue = new Queue('webModuleQueue', {
+const webModuleMapQue = new Queue('webModuleMapQueue', {
   ...workerInput.queueOptions,
 });
 
@@ -62,38 +62,29 @@ async function discoverModuleMap(
 
   const rootDir = dirname(moduleInput.filePath);
 
+  const compilerOptions: ts.CompilerOptions = {
+    jsxFragmentFactory: 'Fragment',
+    target: ts.ScriptTarget.ESNext,
+    module: ts.ModuleKind.ESNext,
+    moduleResolution: ts.ModuleResolutionKind.NodeJs,
+    allowJs: true,
+    checkJs: false,
+    noEmit: true,
+    noEmitHelpers: true,
+    sourceMap: false,
+    inlineSourceMap: false,
+  };
+
   const compilerProgram = await createTypeScriptProgram({
     rootDir,
     rootNames: [moduleInput.filePath],
-    compilerOptions: {
-      jsxFragmentFactory: 'Fragment',
-      target: ts.ScriptTarget.ESNext,
-      module: ts.ModuleKind.ESNext,
-      moduleResolution: ts.ModuleResolutionKind.NodeJs,
-      allowJs: true,
-      checkJs: false,
-      noEmit: true,
-      noEmitHelpers: true,
-      sourceMap: false,
-      inlineSourceMap: false,
-    },
+    compilerOptions,
   });
 
   moduleMapLogger.silly(`compilerProgram created`, {
     rootDir,
     rootNames: [moduleInput.filePath],
-    compilerOptions: {
-      jsxFragmentFactory: 'Fragment',
-      target: ts.ScriptTarget.ESNext,
-      module: ts.ModuleKind.ESNext,
-      moduleResolution: ts.ModuleResolutionKind.NodeJs,
-      allowJs: true,
-      checkJs: false,
-      noEmit: true,
-      noEmitHelpers: true,
-      sourceMap: false,
-      inlineSourceMap: false,
-    },
+    compilerOptions,
   });
 
   const sourceFile = compilerProgram.getSourceFile(moduleInput.filePath);
@@ -134,10 +125,6 @@ async function discoverModuleMap(
         },
       );
 
-      moduleMapLogger.silly(`HelloWorld`, {
-        outputModule,
-      });
-
       const jobData = await ModuleMapWorkerJobInput.createModuleMapJobInput({
         filePath: outputModule.resolvedFileName,
         specifier: moduleInput.specifier,
@@ -162,8 +149,6 @@ async function discoverModuleMap(
     }
   }
 
-  moduleMapLogger.silly('Fucker');
-
   const importedModules = await Promise.all(
     resolvedArray.map(async ([specifier]) => {
       const parentURI = pathToFileURL(moduleInput.filePath);
@@ -179,10 +164,6 @@ async function discoverModuleMap(
       );
 
       if (resolvePathURI.startsWith('node:')) {
-        moduleMapLogger.debug(`resolvePathURI is a node: path`, {
-          objectName: 'resolvePathURI',
-          resolvePathURI,
-        });
         return;
       }
 
@@ -196,20 +177,8 @@ async function discoverModuleMap(
 
       let moduleSpecifier: string;
       if (ts.isExternalModuleNameRelative(specifier)) {
-        moduleMapLogger.silly(`Specifier is relative`, {
-          specifier,
-          parentURI,
-          resolvePathURI,
-        });
-
         moduleSpecifier = filePath;
       } else {
-        moduleMapLogger.silly(`Specifier isn't relative`, {
-          specifier,
-          parentURI,
-          resolvePathURI,
-        });
-
         moduleSpecifier = specifier;
       }
 
@@ -224,7 +193,7 @@ async function discoverModuleMap(
         specifier: moduleSpecifier,
       });
 
-      moduleMapLogger.debug(`newJobData: `, {
+      moduleMapLogger.silly(`newJobData: `, {
         jobData,
         jobId: filePath,
       });
@@ -241,7 +210,7 @@ async function discoverModuleMap(
     }),
   );
 
-  const webModuleJobInputParams: WebModuleJobInput = {
+  const webModuleJobInputParams: WebModuleMapJobInput = {
     filePath: moduleInput.filePath,
     specifier: moduleInput.specifier,
     importedModules: importedModules.filter(Boolean) as string[],
@@ -252,7 +221,7 @@ async function discoverModuleMap(
   });
 
   const [webModuleJobInput, transpilerJobInput] = await Promise.all([
-    WebModuleJobInput.createWebModuleJobInput(webModuleJobInputParams),
+    WebModuleMapJobInput.createWebModuleJobInput(webModuleJobInputParams),
     TranspilerWorkerJobInput.createTranspilerWorkerJobInput({
       filePath: moduleInput.filePath,
     }),
@@ -262,10 +231,12 @@ async function discoverModuleMap(
     webModuleJobInput,
   });
 
-  await Promise.all([
-    webModuleQue.add('webModuleQueue', webModuleJobInput),
-    transpilerQue.add('typescriptTranspiler', transpilerJobInput),
-  ]);
+  await webModuleMapQue.add('webModuleMapQueue', webModuleJobInput, {
+    jobId: webModuleJobInput.filePath,
+  });
+  await transpilerQue.add('typescriptTranspiler', transpilerJobInput, {
+    jobId: transpilerJobInput.filePath,
+  });
 }
 
 const moduleWorkerLogger = logger.child({

@@ -5,20 +5,27 @@ import hyperid from 'hyperid';
 import { Container, Inject, Service } from 'typedi';
 import { fileURLToPath } from 'url';
 import { logger } from '../../Library/Logger';
+import { RedisController } from '../Redis/RedisController';
+import { RedisType } from '../Redis/RedisTypes';
 import { TypeScriptController } from '../TypeScript/TypeScriptController';
 import { WebModuleController } from '../WebModule/WebModuleController';
 import { ServerOptions, serverOptionsToken } from './ServerOptions';
 
 @Service()
 export class ServerController {
-  @Inject(serverOptionsToken)
-  public options: ServerOptions;
+  public redisController: RedisController;
 
   // eslint-disable-next-line no-useless-constructor
   public constructor(
     private typescriptController: TypeScriptController,
     private webModuleController: WebModuleController,
-  ) {}
+    @Inject(serverOptionsToken)
+    public options: ServerOptions,
+  ) {
+    this.redisController = new RedisController({
+      host: options.redis.host,
+    });
+  }
 
   /**
    * Create a new ServerController with the provided Configuration within the TypeDi Container
@@ -50,6 +57,19 @@ export class ServerController {
     return container.get(ServerController);
   }
 
+  public async getPath(filePath: string): Promise<void> {
+    logger.silly('HelloWorld');
+
+    const result = await this.redisController.getValue(
+      RedisType.MODULE,
+      filePath,
+    );
+
+    logger.silly(`getPath(${filePath})`, {
+      result,
+    });
+  }
+
   public async startTypeScript(): Promise<void> {
     logger.info(
       `ServerController.startTypeScript() starting TypeScript Module Map`,
@@ -61,15 +81,25 @@ export class ServerController {
       this.typescriptController.createTranspilerWorkers(),
     ]);
 
+    const filePath = fileURLToPath(
+      await import.meta.resolve('../../Web_Test/Imports.ts'),
+    );
+
     const entrypointJob = await this.typescriptController.createModuleMapTask({
-      filePath: fileURLToPath(
-        await import.meta.resolve('../../Web_Test/Imports.ts'),
-      ),
+      filePath,
+    });
+    logger.silly(`entrypointJob`, {
+      entrypointJob,
     });
 
-    await this.typescriptController.waitForModuleMapDone();
+    await this.typescriptController.waitForTranspileDone();
 
-    await this.typescriptController.waitForJob(entrypointJob);
+    logger.silly('Done');
+
+    await this.getPath(filePath);
+    await this.getPath(
+      '/workspace/node_modules/react-dom/cjs/react-dom.development.js',
+    );
 
     // const typescriptController = this.typescriptController;
 
