@@ -13,6 +13,8 @@ import { WebModuleMapJobInput } from '../WebModule/WebModuleMapJobInput';
 import { ModuleMapWorkerJobInput } from './ModuleMapWorkerJobInput';
 import { TranspilerWorkerJobInput } from './TranspilerWorkerJobInput';
 import { createTypeScriptProgram, isCommonJSImportSplit } from './Utils';
+import { RedisController } from '../Redis/RedisController';
+import { RedisType } from '../Redis/RedisTypes';
 
 const logger = coreLogger.child({
   labels: { worker: 'TypeScriptModuleMapWorker.ts', workerId: threadId },
@@ -38,6 +40,10 @@ const transpilerQue = new Queue('typescriptTranspiler', {
 
 const moduleMapQue = new Queue(workerInput.queName, {
   ...workerInput.queueOptions,
+});
+
+const redisController = new RedisController({
+  ...(workerInput.queueOptions.connection as { host: string }),
 });
 
 /**
@@ -230,6 +236,11 @@ async function discoverModuleMap(
   moduleMapLogger.silly(`discoverModuleMap(${JSON.stringify(moduleInput)})`, {
     webModuleJobInput,
   });
+
+  await redisController.IORedis.set(
+    redisController.getRedisKey(RedisType.MODULE_MAP, moduleInput.filePath),
+    JSON.stringify(webModuleJobInputParams),
+  );
 
   await webModuleMapQue.add('webModuleMapQueue', webModuleJobInput, {
     jobId: webModuleJobInput.filePath,

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars-experimental */
 // src/Modules/WebModule/WebModuleController.ts
 import { Inject, Service } from 'typedi';
 import { fileURLToPath } from 'url';
@@ -10,20 +11,12 @@ import { WebModuleMapJobInput } from './WebModuleMapJobInput';
 export class WebModuleController {
   private webModuleMapQueue: Queue<'webModuleMapQueue', WebModuleMapJobInput>;
 
-  private webModuleQueue: Queue<'webModuleQueue', WebModuleMapJobInput>;
-
   public constructor(
     @Inject(() => QueueController)
     private queueController: QueueController,
   ) {
     this.webModuleMapQueue = queueController.createQueue(
       'webModuleMapQueue',
-      WebModuleMapJobInput,
-      true,
-    );
-
-    this.webModuleQueue = queueController.createQueue(
-      'webModuleQueue',
       WebModuleMapJobInput,
       true,
     );

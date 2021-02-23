@@ -47,7 +47,7 @@ await server.startTypeScript();
 
 // await ssrServer.startTranspiler();
 
-logger.debug(`Creating the Fastify Server`);
+// logger.debug(`Creating the Fastify Server`);
 
 // const fastifyServer = await ssrServer.createFastifyServer();
 

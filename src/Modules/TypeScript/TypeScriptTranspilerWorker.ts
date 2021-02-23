@@ -2,7 +2,7 @@
 import { getWorkerData } from '@k-foss/ts-worker';
 import '../../Utils/Setup';
 import { plainToClass } from 'class-transformer';
-import { Queue, Worker } from 'bullmq';
+import { Worker } from 'bullmq';
 import { logger as coreLogger } from '../../Library/Logger';
 import {
   transpileModule,

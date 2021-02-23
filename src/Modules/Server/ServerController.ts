@@ -9,6 +9,8 @@ import { RedisController } from '../Redis/RedisController';
 import { RedisType } from '../Redis/RedisTypes';
 import { TypeScriptController } from '../TypeScript/TypeScriptController';
 import { WebModuleController } from '../WebModule/WebModuleController';
+import { WebModuleJobInput } from '../WebModule/WebModuleJobInput';
+import { WebModuleMapJobInput } from '../WebModule/WebModuleMapJobInput';
 import { ServerOptions, serverOptionsToken } from './ServerOptions';
 
 @Service()
@@ -57,7 +59,20 @@ export class ServerController {
     return container.get(ServerController);
   }
 
-  public async getPath(filePath: string): Promise<void> {
+  public async getModuleMap(filePath: string): Promise<WebModuleMapJobInput> {
+    const result = await this.redisController.getValue(
+      RedisType.MODULE_MAP,
+      filePath,
+    );
+
+    if (typeof result === 'string') {
+      return plainToClass(WebModuleJobInput, JSON.parse(result));
+    }
+
+    throw new Error('Invalid result from Redis');
+  }
+
+  public async getPathModule(filePath: string): Promise<void> {
     logger.silly('HelloWorld');
 
     const result = await this.redisController.getValue(
@@ -96,10 +111,17 @@ export class ServerController {
 
     logger.silly('Done');
 
-    await this.getPath(filePath);
-    await this.getPath(
+    await this.getPathModule(filePath);
+    await this.getPathModule(
       '/workspace/node_modules/react-dom/cjs/react-dom.development.js',
     );
+
+    const value = await this.getModuleMap(
+      '/workspace/node_modules/react-dom/server.js',
+    );
+    logger.debug('React-DOM Server', {
+      value,
+    });
 
     // const typescriptController = this.typescriptController;
 

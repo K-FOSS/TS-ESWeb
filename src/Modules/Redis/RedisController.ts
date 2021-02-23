@@ -15,8 +15,10 @@ export class SetValueInput {
   @IsString()
   public key: string;
 
-  @IsString()
-  public value: string;
+  @IsString({
+    each: true,
+  })
+  public value: string | string[];
 }
 
 export class RedisController {
@@ -97,7 +99,7 @@ export class RedisController {
     }
   }
 
-  private getRedisKey(type: RedisType, key: string): string {
+  public getRedisKey(type: RedisType, key: string): string {
     return `${this.getRedisKeyPrefix(type)}-${key}`;
   }
 
