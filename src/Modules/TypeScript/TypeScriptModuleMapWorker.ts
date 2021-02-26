@@ -1,12 +1,14 @@
 // src/Modules/TypeScript/TypeScriptModuleMapWorker.ts
 import { Queue, Worker } from 'bullmq';
+import { isString } from 'class-validator';
+import { readFile } from 'fs/promises';
+import { resolve } from 'node:path';
 import { dirname } from 'path';
 import Container from 'typedi';
 import * as ts from 'typescript';
 import { fileURLToPath, pathToFileURL } from 'url';
 import { threadId } from 'worker_threads';
 import { logger as coreLogger } from '../../Library/Logger';
-import { envMode } from '../../Utils/Environment';
 import { QueueController } from '../Queues/QueueController';
 import { queueToken } from '../Queues/QueueToken';
 import { workerControllerToken } from '../Queues/WorkerController';
@@ -87,6 +89,10 @@ async function discoverModuleMap(
     checkJs: false,
     noEmit: true,
     noEmitHelpers: true,
+    noLib: true,
+    isolatedModules: true,
+    skipLibCheck: true,
+    skipDefaultLibCheck: true,
     sourceMap: false,
     inlineSourceMap: false,
   };
@@ -102,6 +108,41 @@ async function discoverModuleMap(
     rootNames: [moduleInput.filePath],
     compilerOptions,
   });
+  if (
+    moduleInput.filePath ===
+    '/workspace/node_modules/@babel/runtime/helpers/extends/_index.mjs'
+  ) {
+    const transpilerJobInput = await TranspilerWorkerJobInput.createTranspilerWorkerJobInput(
+      {
+        filePath: moduleInput.filePath,
+      },
+    );
+
+    await transpilerQue.add('typescriptTranspiler', transpilerJobInput, {
+      jobId: transpilerJobInput.filePath,
+    });
+
+    const specifierCore = moduleInput.specifier || moduleInput.filePath;
+    const specifier = specifierCore.replace(/.(js|ts)x?/, '');
+
+    const webModuleJobInputParams: WebModuleMapJobInput = {
+      filePath: moduleInput.filePath,
+      specifier,
+      importedModules: [],
+    };
+
+    await redisController.IORedis.set(
+      redisController.getRedisKey(RedisType.MODULE_MAP, moduleInput.filePath),
+      JSON.stringify(webModuleJobInputParams),
+    );
+
+    await redisController.IORedis.set(
+      redisController.getRedisKey(RedisType.MODULE_MAP, specifier),
+      JSON.stringify(webModuleJobInputParams),
+    );
+
+    return;
+  }
 
   const sourceFile = compilerProgram.getSourceFile(moduleInput.filePath);
 
@@ -111,7 +152,6 @@ async function discoverModuleMap(
 
   moduleMapLogger.silly(`sourceFile: `, {
     objectName: 'sourceFile',
-    sourceFile: sourceFile.fileName,
   });
 
   const resolvedArray = Array.from(
@@ -181,12 +221,13 @@ async function discoverModuleMap(
   }
 
   const importedModules = await Promise.all(
-    resolvedArray.map(async ([specifier]) => {
+    resolvedArray.map(async ([specifier, _test]) => {
       const parentURI = pathToFileURL(moduleInput.filePath);
 
       moduleMapLogger.silly(`Resolving Module`, {
         specifier,
         parentURI,
+        _test,
       });
 
       const resolvePathURI = await import.meta.resolve(
@@ -204,7 +245,35 @@ async function discoverModuleMap(
         resolvePathURI,
       });
 
-      const filePath = fileURLToPath(resolvePathURI);
+      let filePath = fileURLToPath(resolvePathURI);
+
+      const folderPath = dirname(filePath);
+
+      let packageJSON;
+
+      try {
+        const file = await readFile(resolve(folderPath, 'package.json'));
+        logger.silly('Package file', {
+          file: file.toString(),
+        });
+
+        packageJSON = JSON.parse(file.toString());
+      } catch (err) {}
+
+      if (isString(packageJSON?.module)) {
+        logger.silly(`Testing HelloWorld`, {
+          moduleName: packageJSON.module,
+          filePath: pathToFileURL(folderPath).href,
+        });
+
+        filePath = resolve(folderPath, packageJSON.module);
+      }
+
+      logger.silly('HelloWorld57678', {
+        filePath,
+        test1: compilerProgram.getSourceFile(filePath),
+        packageJSON: packageJSON || 'test',
+      });
 
       let moduleSpecifier: string;
       if (ts.isExternalModuleNameRelative(specifier)) {
@@ -242,7 +311,7 @@ async function discoverModuleMap(
   );
 
   const specifierCore = moduleInput.specifier || moduleInput.filePath;
-  const specifier = specifierCore.replace('.tsx', '');
+  let specifier = specifierCore.replace(/\.(js|ts)x?/, '');
 
   const webModuleJobInputParams: WebModuleMapJobInput = {
     filePath: moduleInput.filePath,
@@ -269,6 +338,15 @@ async function discoverModuleMap(
     redisController.getRedisKey(RedisType.MODULE_MAP, moduleInput.filePath),
     JSON.stringify(webModuleJobInputParams),
   );
+
+  await redisController.IORedis.set(
+    redisController.getRedisKey(RedisType.MODULE_MAP, specifier),
+    JSON.stringify(webModuleJobInputParams),
+  );
+
+  if (specifier.endsWith('/index')) {
+    specifier = specifier.replace('/index', '');
+  }
 
   await redisController.IORedis.set(
     redisController.getRedisKey(RedisType.MODULE_MAP, specifier),

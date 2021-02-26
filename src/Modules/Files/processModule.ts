@@ -4,6 +4,7 @@ import { logger } from '../../Library/Logger';
 import {
   exportsHandler,
   objectExport,
+  processNodeIfStatement,
   processNodeReplacement,
 } from '../TypeScript/Regex';
 
@@ -35,6 +36,11 @@ export function processModule(fileContents: string): string {
   );
 
   setModuleContents(
+    moduleContents.replace(processNodeIfStatement, '$<coreCode>'),
+    'processNodeENVIfStatement',
+  );
+
+  setModuleContents(
     moduleContents.replaceAll(
       exportsHandler,
       (_test, _todo, varName: string) => {
@@ -56,6 +62,10 @@ export function processModule(fileContents: string): string {
       throw new Error('Invalid object replacement coreCode');
     }),
     'objectExport',
+  );
+
+  setModuleContents(
+    moduleContents.replaceAll('process.env.NODE_ENV', process.env.NODE_ENV),
   );
 
   /**

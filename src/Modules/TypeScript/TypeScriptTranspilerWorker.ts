@@ -1,6 +1,5 @@
 // src/Modules/TypeScript/TypeScriptTranspilerWorker.ts
 import { Worker } from 'bullmq';
-import { cjsToEsmTransformerFactory } from 'cjstoesm';
 import { plainToClass } from 'class-transformer';
 import { validateOrReject } from 'class-validator';
 import { readFile } from 'fs/promises';
@@ -15,15 +14,13 @@ import {
 import { threadId } from 'worker_threads';
 import { logger as coreLogger } from '../../Library/Logger';
 import { TypeScriptTransformerController } from '../../Library/Transformers';
-import { Environment, envMode } from '../../Utils/Environment';
+import { Environment } from '../../Utils/Environment';
 import { processModule } from '../Files/processModule';
-// import { QueueController } from '../Queues/QueueController';
 import { queueToken } from '../Queues/QueueToken';
 import { workerControllerToken } from '../Queues/WorkerController';
 import { workerInputToken } from '../Queues/WorkerInput';
 import { RedisController } from '../Redis/RedisController';
 import { RedisType } from '../Redis/RedisTypes';
-import { ImportTransformer } from '../WebModule/ImportTransformer';
 import { TranspilerWorkerJobInput } from './TranspilerWorkerJobInput';
 
 const logger = coreLogger.child({
@@ -67,27 +64,17 @@ async function transformFile(filePath: string): Promise<string> {
 
   const file = await readFile(filePath);
 
-  let fileContents: string;
-
-  fileContents = processModule(file.toString());
-
   workerController.logger.silly(`Getting TypeScript Transformers`);
 
-  await transformerController.loadTransformers();
+  const transformers = await transformerController.loadTransformers();
 
-  workerController.logger.silly(`EnvMode`, {
-    envMode,
+  workerController.logger.silly(`Transformers`, {
+    transformers,
   });
 
-  const transpiledModule = transpileModule(fileContents, {
+  const transpiledModule = transpileModule(processModule(file.toString()), {
     fileName: filePath,
-    transformers: {
-      before: [cjsToEsmTransformerFactory()],
-      after: [new ImportTransformer().after],
-      afterDeclarations: [
-        // ...
-      ],
-    },
+    transformers,
     compilerOptions: {
       allowJs: true,
       checkJs: false,

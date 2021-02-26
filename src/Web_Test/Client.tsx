@@ -34,6 +34,7 @@
 // export {};
 
 import * as ReactDOM from 'react-dom';
+import { BrowserRouter } from 'react-router-dom';
 
 async function renderApp(): Promise<void> {
   const container = document.getElementById('app');
@@ -42,7 +43,9 @@ async function renderApp(): Promise<void> {
 
   ReactDOM.render(
     <div>
-      <App />
+      <BrowserRouter>
+        <App />
+      </BrowserRouter>
     </div>,
     container,
   );

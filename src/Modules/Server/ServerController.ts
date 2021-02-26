@@ -1,6 +1,6 @@
 // src/Modules/Server/ServerController.ts
 import { ApolloServer } from 'apollo-server-fastify';
-import { plainToClass } from 'class-transformer';
+import { classToPlain, plainToClass } from 'class-transformer';
 import { validateOrReject } from 'class-validator';
 import hyperid from 'hyperid';
 import { resolve } from 'node:path';
@@ -14,6 +14,7 @@ import { RedisController } from '../Redis/RedisController';
 import { RedisType } from '../Redis/RedisTypes';
 import { SSRController } from '../SSR/SSRController';
 import { TypeScriptController } from '../TypeScript/TypeScriptController';
+import { WebAppManifest } from '../WebAppManifest/WebAppManifest';
 import { WebModuleController } from '../WebModule/WebModuleController';
 import { WebModuleJobInput } from '../WebModule/WebModuleJobInput';
 import { WebModuleMapJobInput } from '../WebModule/WebModuleMapJobInput';
@@ -26,6 +27,11 @@ export class ServerController {
 
   @Inject()
   public ssrController: SSRController;
+
+  /**
+   * Path of the Web App Manifest
+   */
+  private webAppManifestPath = '/Main.webmanifest';
 
   // eslint-disable-next-line no-useless-constructor
   public constructor(
@@ -64,6 +70,15 @@ export class ServerController {
   }
 
   /**
+   *
+   * @param options
+   * @returns
+   */
+  public handleWebAppManifest(): WebAppManifest {
+    return classToPlain(this.options.manifest) as WebAppManifest;
+  }
+
+  /**
    * Create a new ServerController with the provided Configuration within the TypeDi Container
    * @param options Server Configuration
    * @param container Optional TypeDi Container defaults to `Container.of()`
@@ -85,9 +100,13 @@ export class ServerController {
         serverId,
       },
       {
-        strategy: 'exposeAll',
+        enableCircularCheck: true,
       },
     );
+    logger.silly('serverOptions post transform: ', {
+      serverOptions,
+    });
+
     await validateOrReject(serverOptions);
 
     if (
@@ -175,15 +194,15 @@ export class ServerController {
     // const moduleFiles = await getAllChildModules(jobOutput.filePath);
   }
 
-  public async renderHTML(): Promise<string> {
+  public async renderHTML(path: string): Promise<string> {
     await timeout(10);
 
-    const appHTML = this.ssrController.renderApp();
+    const appHTML = this.ssrController.renderApp(path);
 
     return `<html>
     <head>
       <title>TS-ESWeb</title>
-      <link rel="manifest" href="/WebManifest.json">
+      <link rel="manifest" href="${this.webAppManifestPath}">
     </head>
     <body>
       <div id="app">${appHTML}</div>

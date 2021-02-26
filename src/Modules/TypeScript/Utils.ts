@@ -8,6 +8,7 @@ import {
 } from 'class-validator';
 import { parse } from 'path';
 import * as ts from 'typescript';
+import { logger } from '../../Library/Logger';
 
 class CreateTypeScriptProgramInput {
   @IsString()
@@ -47,6 +48,12 @@ export async function createTypeScriptProgram(
     ...inputParams.compilerOptions,
   };
 
+  logger.silly(`createTypeScriptProgram`, {
+    inputParams,
+    input,
+    options,
+  });
+
   const compilierHost = ts.createCompilerHost({
     ...options,
     rootDir: inputParams.rootDir,
@@ -71,6 +78,15 @@ export function isCommonJSImportSplit(
     input.length === 2 &&
     input.every(([_path, resolvedModule]) =>
       resolvedModule.packageId?.subModuleName.includes('cjs'),
+    )
+  ) {
+    return true;
+  }
+
+  if (
+    input.length === 2 &&
+    input.every(([_path, resolvedModule]) =>
+      resolvedModule.packageId?.subModuleName.includes('umd'),
     )
   ) {
     return true;

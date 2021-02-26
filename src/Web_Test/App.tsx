@@ -1,14 +1,12 @@
 // src/App.tsx
-import { useCallback } from 'react';
-import { Counter } from './Components/Counter/index';
+import { Nav } from './Components/Nav';
+import { Router } from './Components/Routers';
 
 export function App(): React.ReactElement {
-  const sayHello = useCallback(() => console.log('HelloWorld'), []);
-
   return (
     <>
-      <h1 onClick={sayHello}>HelloWorld</h1>
-      <Counter />
+      <Nav />
+      <Router />
     </>
   );
 }

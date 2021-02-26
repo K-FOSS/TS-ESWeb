@@ -9,6 +9,7 @@ import {
 import { findModuleFiles } from '../Utils/moduleFileFinder';
 import { cjsToEsmTransformerFactory } from 'cjstoesm';
 import { logger } from './Logger';
+import { ClassType } from 'type-graphql';
 
 let customTransformers: CustomTransformers;
 
@@ -39,6 +40,12 @@ export abstract class Transformer {
    * Custom transformers to evaluate after built-in .d.ts transformations.
    */
   public afterDeclarations?: TransformerFactory<Bundle | SourceFile>;
+}
+
+interface TransformersObject {
+  before: TransformerFactory<SourceFile>[];
+
+  after: TransformerFactory<SourceFile>[];
 }
 
 /**
@@ -106,25 +113,45 @@ export class TypeScriptTransformerController {
   public transformers: Transformer[];
 
   private async findTransformers(): Promise<Transformer[]> {
-    const modules = await findModuleFiles<{ [key: string]: Transformer }>(
-      /.*Resolver\.(js|ts)/,
-    );
+    const modules = await findModuleFiles<{
+      [key: string]: ClassType<Transformer>;
+    }>(/.*Transformer\.(js|ts)/);
 
-    return modules.flatMap((moduleExports) => Object.values(moduleExports));
+    return modules.flatMap((moduleExports) =>
+      Object.values(moduleExports).map(
+        (TransformerClass) => new TransformerClass(),
+      ),
+    );
   }
 
   /**
    * Load transformer modules and return the transformers object
    */
-  public async loadTransformers(): Promise<void> {
+  public async loadTransformers(): Promise<TransformersObject> {
     const transformers = await this.findTransformers();
 
-    logger.silly(`loadTransformers`, {
-      labels: {
-        appName: 'TS-ESWeb',
-        className: 'TypeScriptTransformerController',
+    return transformers.reduce<TransformersObject>(
+      (accumulator, currentValue) => {
+        const returned = Object.fromEntries(
+          (Object.keys(accumulator) as ['before', 'after']).map((key) =>
+            typeof currentValue[key] !== 'undefined'
+              ? [key, [...accumulator[key], currentValue[key]]]
+              : [key, accumulator[key]],
+          ),
+        ) as TransformersObject;
+
+        logger.silly('transformers reduce: ', {
+          transformers,
+          accumulator,
+          currentValue,
+        });
+
+        return returned;
       },
-      transformers,
-    });
+      {
+        before: [cjsToEsmTransformerFactory()],
+        after: [],
+      } as TransformersObject,
+    );
   }
 }

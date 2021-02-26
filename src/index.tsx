@@ -1,37 +1,19 @@
+/* eslint-disable @typescript-eslint/require-await */
+/* eslint-disable @typescript-eslint/no-floating-promises */
 // src/index.ts
 import fastify from 'fastify';
 import { resolve } from 'path';
 import './Utils/Setup';
 import { logger } from './Library/Logger';
 import { ServerController } from './Modules/Server/ServerController';
-import { WebAppManifest } from './Modules/WebAppManifest/WebAppManifest';
-import { WebAppManfiestController } from './Modules/WebAppManifest/WebAppManifestController';
 import { App } from './Web_Test/App';
+import { WebAppManifest } from './Modules/WebAppManifest/WebAppManifest';
 
 const webServer = fastify();
 
 logger.info(`Starting TS-ESWeb`);
 
 logger.debug(`Creating TS-ESWeb Web Manifest`);
-
-const manifest: WebAppManifest = {
-  name: 'HelloWorld',
-  backgroundColor: '#FFFFFF',
-  description: 'Hello World App1',
-  display: 'standalone',
-  shortName: 'Hello',
-  startURL: '/Test',
-  icons: [
-    {
-      src:
-        'https://www.shareicon.net/data/512x512/2016/07/10/119930_google_512x512.png',
-      type: 'image/png',
-      sizes: '512x512',
-    },
-  ],
-};
-
-await WebAppManfiestController.loadManifest(manifest);
 
 export const server = await ServerController.createServer({
   redis: {
@@ -41,6 +23,22 @@ export const server = await ServerController.createServer({
     webRoot: resolve('./src/Web_Test'),
     entrypoint: 'Imports.ts',
     appComponent: App,
+  },
+  manifest: {
+    name: 'HelloWorld',
+    backgroundColor: '#FFFFFF',
+    description: 'Hello World App1',
+    display: 'standalone',
+    shortName: 'Hello',
+    startURL: '/Test',
+    icons: [
+      {
+        src:
+          'https://www.shareicon.net/data/512x512/2016/07/10/119930_google_512x512.png',
+        type: 'image/png',
+        sizes: '512x512',
+      },
+    ],
   },
 });
 
@@ -62,12 +60,6 @@ await webServer.register(apiServer.createHandler());
 
 // logger.debug(`Fastify server is listening ${serverString}`);
 
-webServer.get('/', async function (test, reply) {
-  reply.type('text/html');
-
-  return server.renderHTML();
-});
-
 webServer.get<{
   Params: {
     '*': string;
@@ -87,6 +79,22 @@ webServer.get<{
   reply.code(404);
 
   reply.send('Error');
+});
+
+webServer.get(
+  '/Main.webmanifest',
+  async function (request, reply): Promise<WebAppManifest> {
+    reply.type('application/manifest+json');
+    reply.status(200);
+
+    return server.handleWebAppManifest();
+  },
+);
+
+webServer.get('/*', async function (request, reply) {
+  reply.type('text/html');
+
+  return server.renderHTML(request.url);
 });
 
 const bindHost = await webServer.listen(9090, '0.0.0.0');
