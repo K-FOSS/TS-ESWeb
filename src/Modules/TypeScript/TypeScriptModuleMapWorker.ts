@@ -1,21 +1,22 @@
 // src/Modules/TypeScript/TypeScriptModuleMapWorker.ts
 import { Queue, Worker } from 'bullmq';
 import { dirname } from 'path';
+import Container from 'typedi';
 import * as ts from 'typescript';
 import { fileURLToPath, pathToFileURL } from 'url';
 import { threadId } from 'worker_threads';
 import { logger as coreLogger } from '../../Library/Logger';
 import { envMode } from '../../Utils/Environment';
+import { QueueController } from '../Queues/QueueController';
+import { queueToken } from '../Queues/QueueToken';
+import { workerControllerToken } from '../Queues/WorkerController';
 import { workerInputToken } from '../Queues/WorkerInput';
+import { RedisController } from '../Redis/RedisController';
+import { RedisType } from '../Redis/RedisTypes';
 import { WebModuleMapJobInput } from '../WebModule/WebModuleMapJobInput';
 import { ModuleMapWorkerJobInput } from './ModuleMapWorkerJobInput';
 import { TranspilerWorkerJobInput } from './TranspilerWorkerJobInput';
 import { createTypeScriptProgram, isCommonJSImportSplit } from './Utils';
-import { RedisController } from '../Redis/RedisController';
-import { RedisType } from '../Redis/RedisTypes';
-import Container from 'typedi';
-import { QueueController } from '../Queues/QueueController';
-import { queueToken } from '../Queues/QueueToken';
 
 const logger = coreLogger.child({
   labels: { worker: 'TypeScriptModuleMapWorker.ts', workerId: threadId },
@@ -30,10 +31,12 @@ logger.info(`Worker starting`, {
 
 const queueController = Container.get(QueueController);
 
+const workerController = Container.get(workerControllerToken);
+
 const queueName = Container.get(queueToken);
 const workerInput = Container.get(workerInputToken);
 
-logger.silly(`workerInput`, {
+workerController.logger.silly(`workerInput`, {
   queueController,
   queueName,
 });
@@ -60,11 +63,12 @@ const redisController = Container.get(RedisController);
 async function discoverModuleMap(
   moduleInput: ModuleMapWorkerJobInput,
 ): Promise<void> {
-  const moduleMapLogger = logger.child({
+  const moduleMapLogger = workerController.logger.child({
     labels: {
       filePath: moduleInput.filePath,
       worker: 'TypeScriptModuleMapWorker.ts',
       workerId: threadId,
+      appName: 'TS-ESWeb',
     },
   });
 
@@ -131,8 +135,22 @@ async function discoverModuleMap(
         // @ts-expect-error
         // eslint-disable-next-line array-callback-return
         (_test, [_filePath, resolvedModule]) => {
-          if (resolvedModule.packageId?.subModuleName.includes(envMode)) {
+          workerController.logger.silly(`resolvedArrayReduce`, {
+            _filePath,
+            resolvedModule,
+            includes: workerInput.serverOptions.envMode,
+            _test,
+            specifier: moduleInput.specifier,
+          });
+
+          if (
+            resolvedModule.packageId?.subModuleName.includes(
+              workerInput.serverOptions.envMode,
+            )
+          ) {
             return [_filePath, resolvedModule];
+          } else {
+            return _test;
           }
         },
       );
@@ -157,6 +175,7 @@ async function discoverModuleMap(
       moduleMapLogger.error('Error during reduce', {
         // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
         err,
+        specifier: moduleInput.specifier,
       });
     }
   }
@@ -259,13 +278,24 @@ async function discoverModuleMap(
   await webModuleMapQue.add('webModuleMapQueue', webModuleJobInput, {
     jobId: webModuleJobInput.filePath,
   });
+
+  workerController.logger.silly(`Creating Transpiler Task`, {
+    jobId: transpilerJobInput.filePath,
+    transpilerJobInput,
+    specifier,
+  });
+
   await transpilerQue.add('typescriptTranspiler', transpilerJobInput, {
     jobId: transpilerJobInput.filePath,
   });
 }
 
-const moduleWorkerLogger = logger.child({
+const moduleWorkerLogger = workerController.logger.child({
   worker: 'moduleWorker',
+  labels: {
+    appName: 'TS-ESWeb',
+    worker: 'moduleWorker',
+  },
 });
 
 const moduleWorker = new Worker<ModuleMapWorkerJobInput>(
@@ -295,7 +325,7 @@ const moduleWorker = new Worker<ModuleMapWorkerJobInput>(
   },
 );
 
-logger.silly(`Created moduleWorker`, {
-  objectName: 'moduleWorker',
-  moduleWorker,
+workerController.logger.silly(`Created moduleWorker`, {
+  objectName: 'moduleWorker.name',
+  value: moduleWorker.name,
 });

@@ -14,9 +14,12 @@ import {
 } from 'typescript';
 import { threadId } from 'worker_threads';
 import { logger as coreLogger } from '../../Library/Logger';
+import { TypeScriptTransformerController } from '../../Library/Transformers';
+import { Environment, envMode } from '../../Utils/Environment';
 import { processModule } from '../Files/processModule';
 // import { QueueController } from '../Queues/QueueController';
 import { queueToken } from '../Queues/QueueToken';
+import { workerControllerToken } from '../Queues/WorkerController';
 import { workerInputToken } from '../Queues/WorkerInput';
 import { RedisController } from '../Redis/RedisController';
 import { RedisType } from '../Redis/RedisTypes';
@@ -36,6 +39,8 @@ logger.info(`Worker starting`, {
 
 // const queueController = Container.get(QueueController);
 
+const workerController = Container.get(workerControllerToken);
+
 const queueName = Container.get(queueToken);
 const workerInput = Container.get(workerInputToken);
 
@@ -46,21 +51,33 @@ logger.debug(`Retrieved workerData:`, {
   workerInput,
 });
 
+const transformerController = new TypeScriptTransformerController();
+
 /**
  * Transform provided filepath to ESM with TypeScript Compiler API
  * @param filePath Path to file to load, transform, and transpile to ESM
  * @returns Promise resolving to string of tranformed file.
  */
 async function transformFile(filePath: string): Promise<string> {
-  logger.info(`Transforming ${filePath}`);
+  workerController.logger.info(`Transforming ${filePath}`);
 
-  logger.silly(`Loading File`, {
+  workerController.logger.silly(`Loading File`, {
     filePath,
   });
 
   const file = await readFile(filePath);
 
-  let fileContents = processModule(file.toString());
+  let fileContents: string;
+
+  fileContents = processModule(file.toString());
+
+  workerController.logger.silly(`Getting TypeScript Transformers`);
+
+  await transformerController.loadTransformers();
+
+  workerController.logger.silly(`EnvMode`, {
+    envMode,
+  });
 
   const transpiledModule = transpileModule(fileContents, {
     fileName: filePath,
@@ -78,12 +95,15 @@ async function transformFile(filePath: string): Promise<string> {
       moduleResolution: ModuleResolutionKind.NodeJs,
       target: ScriptTarget.ESNext,
       inlineSourceMap: true,
-      jsx: JsxEmit.ReactJSXDev,
+      jsx:
+        workerInput.serverOptions.envMode === Environment.PRODUCTION
+          ? JsxEmit.ReactJSX
+          : JsxEmit.ReactJSXDev,
       jsxFragmentFactory: 'Fragment',
     },
   });
 
-  return transpiledModule.outputText;
+  return transpiledModule.outputText.replaceAll('exports.', '');
 }
 
 const transpilerWorker = new Worker<TranspilerWorkerJobInput>(
@@ -115,6 +135,8 @@ const transpilerWorker = new Worker<TranspilerWorkerJobInput>(
 
     const sourceText = await transformFile(jobInput.filePath);
 
+    logger.silly(`Module ${jobInput.filePath} has been transpiled`);
+
     await redisController.setValue(RedisType.MODULE, {
       key: jobInput.filePath,
       value: sourceText,
@@ -131,5 +153,5 @@ const transpilerWorker = new Worker<TranspilerWorkerJobInput>(
 
 logger.silly(`Created transpilerWorker`, {
   objectName: 'transpilerWorker',
-  transpilerWorker,
+  transpilerWorkerName: transpilerWorker.name,
 });

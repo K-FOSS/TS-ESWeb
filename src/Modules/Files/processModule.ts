@@ -1,5 +1,5 @@
 // src/Modules/Files/processModule.ts
-
+import { isString } from 'class-validator';
 import { logger } from '../../Library/Logger';
 import {
   exportsHandler,
@@ -10,29 +10,59 @@ import {
 export function processModule(fileContents: string): string {
   const exportVars: string[] = [];
 
-  logger.silly(`processModule`, {
+  const processLogger = logger.child({
+    function: `processModule`,
+  });
+
+  processLogger.silly(`Processing module`, {
     fileContents,
   });
+
+  let moduleContents: string = fileContents;
+
+  function setModuleContents(newValue: string, actionLabel?: string): void {
+    processLogger.silly(`setModuleContents`, {
+      newValue,
+      actionLabel,
+    });
+
+    moduleContents = newValue;
+  }
+
+  setModuleContents(
+    moduleContents.replace(processNodeReplacement, '$<coreCode>'),
+    'processNodeReplacement',
+  );
+
+  setModuleContents(
+    moduleContents.replaceAll(
+      exportsHandler,
+      (_test, _todo, varName: string) => {
+        exportVars.push(varName);
+        return `var ${varName}`;
+      },
+    ),
+    'exportsHandler',
+  );
+
+  setModuleContents(
+    moduleContents.replace(objectExport, (...args) => {
+      const obj = args[args.length - 1] as { coreCode: string };
+
+      if (isString(obj.coreCode)) {
+        return obj.coreCode.replaceAll('exports.', '');
+      }
+
+      throw new Error('Invalid object replacement coreCode');
+    }),
+    'objectExport',
+  );
 
   /**
    * https://regex101.com/r/uwAq1N/1
    */
 
-  let moduleContents = fileContents
-    .replace(processNodeReplacement, '$<coreCode>')
-    .replaceAll(exportsHandler, (test, todo, varName) => {
-      exportVars.push(varName);
-      logger.silly(`exportVars:`, { varName });
-
-      return `var ${varName as string}`;
-    })
-    .replace(objectExport, (...args) => {
-      const { coreCode } = args[args.length - 1];
-
-      return coreCode.replaceAll('exports.', '');
-    });
-
-  exportVars.map((exportVar) => {
+  exportVars.forEach((exportVar) => {
     moduleContents = moduleContents.replaceAll(
       `exports.${exportVar}`,
       `${exportVar}`,

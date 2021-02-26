@@ -7,7 +7,7 @@ import { Transformer } from '../../Library/Transformers';
 const pushDefault = ['react', 'react-dom', 'scheduler', 'scheduler/tracing'];
 
 export class ImportTransformer extends Transformer {
-  public after: Transformer['before'] = (context) => {
+  public after: Transformer['after'] = (context) => {
     // const relativePathRegex = /^\.{1,2}[/]/;
 
     return (sourceFile: ts.SourceFile): ts.SourceFile => {

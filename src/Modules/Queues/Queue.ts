@@ -1,20 +1,20 @@
 // src/Modules/Queue/Queue.ts
+import { spawnWorker } from '@k-foss/ts-worker';
 import {
   Job,
   JobsOptions,
   Queue as BullMQQueue,
   QueueEvents as BullMQQueueEvents,
 } from 'bullmq';
+import { ClassConstructor, plainToClass } from 'class-transformer';
+import EventEmitter from 'events';
+import { fileURLToPath } from 'node:url';
+import pEvent from 'p-event';
+import { Logger } from 'winston';
 import { Worker } from 'worker_threads';
-import { spawnWorker } from '@k-foss/ts-worker';
 import { logger } from '../../Library/Logger';
 import { QueueOptions } from './QueueOptions';
-import { ClassConstructor, plainToClass } from 'class-transformer';
-import { Logger } from 'winston';
 import { WorkerInput } from './WorkerInput';
-import EventEmitter from 'events';
-import pEvent from 'p-event';
-import { fileURLToPath } from 'node:url';
 
 /**
  * Task Queue handled by dedicated `worker_threads` created by
@@ -156,15 +156,33 @@ export class Queue<QueueName extends string, JobInput> {
    */
   private startWatching(): void {
     if (this.options.disableTermination !== true) {
-      this.handleDrained = (): void => {
-        this.isRunningJobs().catch(() => {
-          this.logger.silly('Error isRunningJobs, terminating workers');
+      let jobLessCounts = 0;
 
-          return this.terminateWorkers();
-        });
+      const helloWorld = async (): Promise<void> => {
+        const jobCounts = await this.getCounts();
+
+        const anyJobs = jobCounts.some((jobCount) => jobCount > 0);
+
+        if (this.hasRun === false) {
+          if (anyJobs === true) {
+            this.hasRun = true;
+          }
+
+          return;
+        }
+
+        if (anyJobs === false) {
+          jobLessCounts++;
+
+          if (jobLessCounts > 5) {
+            return this.terminateWorkers();
+          }
+        }
       };
 
-      this.queueEvents.on('drained', this.handleDrained);
+      setInterval(() => {
+        helloWorld();
+      }, 500);
     }
   }
 

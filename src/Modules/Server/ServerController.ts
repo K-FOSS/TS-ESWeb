@@ -78,10 +78,16 @@ export class ServerController {
 
     const container = Container.of(serverId);
 
-    const serverOptions = plainToClass(ServerOptions, {
-      ...options,
-      serverId,
-    });
+    const serverOptions = plainToClass(
+      ServerOptions,
+      {
+        ...options,
+        serverId,
+      },
+      {
+        strategy: 'exposeAll',
+      },
+    );
     await validateOrReject(serverOptions);
 
     if (
@@ -139,12 +145,10 @@ export class ServerController {
       await import.meta.resolve('../../Web_Test/Imports.ts'),
     );
 
-    const entrypointJob = await this.typescriptController.createModuleMapTask({
+    await this.typescriptController.createModuleMapTask({
       filePath,
     });
-    logger.silly(`entrypointJob`, {
-      entrypointJob,
-    });
+    logger.silly(`entrypointJob created`);
 
     await this.typescriptController.waitForTranspileDone();
 

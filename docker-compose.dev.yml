@@ -30,7 +30,9 @@ services:
 
   Loki:
     image: grafana/loki:latest
-    command: -config.file=/etc/loki/local-config.yaml
+    command: -config.file=/etc/loki/config.yaml
+    volumes:
+      - ./Extras/Loki/config.yaml:/etc/loki/config.yaml:ro
     networks:
       - internalLoki
 

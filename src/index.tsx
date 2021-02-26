@@ -1,7 +1,7 @@
 // src/index.ts
 import fastify from 'fastify';
 import { resolve } from 'path';
-import 'reflect-metadata';
+import './Utils/Setup';
 import { logger } from './Library/Logger';
 import { ServerController } from './Modules/Server/ServerController';
 import { WebAppManifest } from './Modules/WebAppManifest/WebAppManifest';
@@ -12,7 +12,7 @@ const webServer = fastify();
 
 logger.info(`Starting TS-ESWeb`);
 
-logger.debug(`Creating TS-ESWeb SSR Server`);
+logger.debug(`Creating TS-ESWeb Web Manifest`);
 
 const manifest: WebAppManifest = {
   name: 'HelloWorld',

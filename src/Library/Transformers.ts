@@ -8,6 +8,7 @@ import {
 } from 'typescript';
 import { findModuleFiles } from '../Utils/moduleFileFinder';
 import { cjsToEsmTransformerFactory } from 'cjstoesm';
+import { logger } from './Logger';
 
 let customTransformers: CustomTransformers;
 
@@ -99,4 +100,31 @@ export async function getTransformers(
   }
 
   return customTransformers;
+}
+
+export class TypeScriptTransformerController {
+  public transformers: Transformer[];
+
+  private async findTransformers(): Promise<Transformer[]> {
+    const modules = await findModuleFiles<{ [key: string]: Transformer }>(
+      /.*Resolver\.(js|ts)/,
+    );
+
+    return modules.flatMap((moduleExports) => Object.values(moduleExports));
+  }
+
+  /**
+   * Load transformer modules and return the transformers object
+   */
+  public async loadTransformers(): Promise<void> {
+    const transformers = await this.findTransformers();
+
+    logger.silly(`loadTransformers`, {
+      labels: {
+        appName: 'TS-ESWeb',
+        className: 'TypeScriptTransformerController',
+      },
+      transformers,
+    });
+  }
 }

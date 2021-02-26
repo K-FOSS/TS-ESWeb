@@ -2,21 +2,31 @@
 
 import { plainToClass } from 'class-transformer';
 import { validateOrReject } from 'class-validator';
-import Container, { Inject, Service } from 'typedi';
-import { logger } from '../../Library/Logger';
+import { basename } from 'node:path';
+import Container, { Inject, Service, Token } from 'typedi';
+import { Logger } from 'winston';
+import { logger as coreLogger } from '../../Library/Logger';
 import { ServerOptions, serverOptionsToken } from '../Server/ServerOptions';
 import { queueToken } from './QueueToken';
 import { WorkerInput, workerInputToken } from './WorkerInput';
 
 @Service()
 export class WorkerController {
+  public logger: Logger;
+
   public constructor(
-    @Inject(serverOptionsToken)
-    public options: ServerOptions,
+    @Inject(workerInputToken)
+    public workerInput: WorkerInput,
   ) {
-    logger.silly(`WorkerController`, {
-      options,
+    this.logger = coreLogger.child({
+      labels: {
+        appName: 'TS-ESWeb',
+        worker: basename(workerInput.workerPath),
+        queueName: workerInput.queName,
+      },
     });
+
+    this.logger.silly(`WorkerController created`);
   }
 
   public static async createWorkerController(
@@ -46,6 +56,20 @@ export class WorkerController {
       value: workerInput,
     });
 
-    return Container.get(WorkerController);
+    const workerController = Container.get(WorkerController);
+    Container.set({
+      id: workerControllerToken,
+      global: true,
+      value: workerController,
+    });
+
+    return Container.get(workerControllerToken);
   }
 }
+
+/**
+ * TypeDI Token for the current workers WorkerController
+ */
+export const workerControllerToken = new Token<WorkerController>(
+  'workerController',
+);

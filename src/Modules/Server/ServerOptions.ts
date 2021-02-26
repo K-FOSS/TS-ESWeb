@@ -1,7 +1,16 @@
 // src/Modules/Server/ServerOptions.ts
-import { Type } from 'class-transformer';
-import { IsDefined, IsUUID, ValidateNested } from 'class-validator';
+import { Expose, Transform, Type } from 'class-transformer';
+import {
+  IsDefined,
+  IsEnum,
+  IsOptional,
+  IsString,
+  IsUUID,
+  ValidateNested,
+} from 'class-validator';
 import { Token } from 'typedi';
+import { logger } from '../../Library/Logger';
+import { Environment, envMode } from '../../Utils/Environment';
 import { RedisOptions } from '../Redis/RedisOptions';
 import { SSROptions } from '../SSR/SSROptions';
 
@@ -17,6 +26,18 @@ export class ServerOptions {
   @IsUUID()
   @IsDefined()
   public serverId: string;
+
+  @Expose()
+  @IsEnum(Environment)
+  @IsOptional()
+  @Transform(({ value }) => {
+    if (typeof value === 'undefined') {
+      return envMode;
+    }
+
+    return value as Environment;
+  })
+  public envMode: Environment;
 }
 
 export const serverOptionsToken = new Token<ServerOptions>('serverOptions');
