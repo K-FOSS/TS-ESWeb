@@ -15,6 +15,7 @@ export default class FastifyRoute1 implements Route {
     url: '/Route1',
   };
 
+  // eslint-disable-next-line @typescript-eslint/require-await
   public async handler(
     this: FastifyInstance,
     request: FastifyRequest,

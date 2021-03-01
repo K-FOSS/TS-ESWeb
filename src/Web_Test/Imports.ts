@@ -13,12 +13,6 @@ export async function importServiceWorker(): Promise<
   return import('./ServiceWorker');
 }
 
-export async function importReactDOMServer(): Promise<
-  typeof import('react-dom/server')
-> {
-  return import('react-dom/server');
-}
-
 export async function importReactDOM(): Promise<typeof import('react-dom')> {
   return import('react-dom');
 }

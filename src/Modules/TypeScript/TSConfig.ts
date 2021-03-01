@@ -2,19 +2,18 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/unbound-method */
 // src/Modules/TypeScript/TSConfig.ts
+import { dirname as pathDirname, isAbsolute as isAbsolutePath } from 'path';
 import {
   CompilerOptions,
-  ScriptTarget,
+  convertCompilerOptionsFromJson,
+  findConfigFile,
+  JsxEmit,
   ModuleKind,
   ModuleResolutionKind,
-  JsxEmit,
-  findConfigFile,
-  sys,
-  convertCompilerOptionsFromJson,
   readConfigFile,
+  ScriptTarget,
+  sys,
 } from 'typescript';
-
-import { isAbsolute as isAbsolutePath, dirname as pathDirname } from 'path';
 
 let tsConfigCache: CompilerOptions;
 

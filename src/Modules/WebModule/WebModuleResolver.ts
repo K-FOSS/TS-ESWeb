@@ -1,4 +1,4 @@
-// src/Modules/WebModule/WebModuleResolver.ts
+// src/Modules/WebModules/WebModuleResolver.ts
 import {
   Arg,
   Field,
@@ -8,76 +8,44 @@ import {
   Resolver,
   Root,
 } from 'type-graphql';
-import { logger } from '../../Library/Logger';
+import { Inject, Service } from 'typedi';
+import { RedisController } from '../Redis/RedisController';
+import { RedisType } from '../Redis/RedisTypes';
+import { ServerOptions, serverOptionsToken } from '../Server/ServerOptions';
 import { WebModule } from './WebModule';
-import { webModuleController } from './WebModuleController';
+import { WebModuleController } from './WebModuleController';
 
 @InputType()
 class WebModuleFilter {
-  @Field({ nullable: true })
+  @Field()
   public specifier: string;
-
-  @Field({ nullable: true })
-  public filePath: string;
 }
 
+@Service()
 @Resolver(() => WebModule)
 export class WebModuleResolver {
-  @Query(() => [WebModule])
-  public webModules(): WebModule[] {
-    return Array.from(webModuleController.modules.values());
-  }
+  @Inject(() => RedisController)
+  private redisController: RedisController;
 
-  @Query(() => WebModule, { nullable: true })
-  public webModule(
-    @Arg('filter') { filePath, specifier }: WebModuleFilter,
-  ): WebModule | undefined {
-    if (filePath) {
-      return webModuleController.getModule(filePath);
-    } else {
-      const filePath = webModuleController.specifierTest.get(specifier);
+  @Inject(() => WebModuleController)
+  public webModuleController: WebModuleController;
 
-      logger.debug(
-        `WebModuleResolver.webModule() result for ${specifier} is filePath: ${
-          filePath?.toString() || ''
-        }`,
-      );
+  @Inject(serverOptionsToken)
+  public options: ServerOptions;
 
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-      return webModuleController.getModule(filePath!);
-    }
-  }
+  @Query(() => WebModule)
+  public async webModule(
+    @Arg('filter', () => WebModuleFilter) input: WebModuleFilter,
+  ): Promise<WebModule> {
+    const webModule = await this.webModuleController.getWebModule(
+      input.specifier,
+    );
 
-  @FieldResolver(() => [WebModule])
-  public dependencies(@Root() webModule: WebModule): WebModule[] {
-    const deps = Array.from(webModule.dependencies);
-
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    return deps.flatMap(
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-      (moduleKey) => webModuleController.getModule(moduleKey)!,
-    )!;
+    return webModule;
   }
 
   @FieldResolver(() => String)
-  public specifiers(@Root() webModule: WebModule): string {
-    return webModuleController.getSpecifiers(webModule.filePath);
-  }
-
-  @Query(() => Boolean)
-  public helloTest(): boolean {
-    logger.debug(
-      `WebModuleResolver.helloTest() Array.from(webModuleController.modules): ${Array.from(
-        webModuleController.modules,
-      )}
-    Array.from(webModuleController.specifierMap): ${Array.from(
-      webModuleController.specifierMap,
-    )}
-    Array.from(webModuleController.specifierTest): ${Array.from(
-      webModuleController.specifierTest,
-    )}`,
-    );
-
-    return true;
+  public async code(@Root() { filePath }: WebModule): Promise<string> {
+    return this.redisController.getValueOrThrow(RedisType.MODULE, filePath);
   }
 }

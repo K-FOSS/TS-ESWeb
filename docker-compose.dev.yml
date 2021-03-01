@@ -1,0 +1,44 @@
+version: '3.8'
+
+volumes:
+  modules:
+
+networks:
+  internalRedis:
+  internalLoki:
+
+services:
+  TSESWeb:
+    image: ts-esweb:dev
+    command: /bin/sh -c "while sleep 1000; do :; done"
+    user: node
+    build:
+      context: ./
+      dockerfile: Dockerfile.dev
+    volumes:
+      # API Folders
+      - ./:/workspace:cached
+      - modules:/workspace/node_modules
+    networks:
+      - internalRedis
+      - internalLoki
+
+  Redis:
+    image: redis:alpine3.12
+    networks:
+      - internalRedis
+
+  Loki:
+    image: grafana/loki:latest
+    command: -config.file=/etc/loki/config.yaml
+    volumes:
+      - ./Extras/Loki/config.yaml:/etc/loki/config.yaml:ro
+    networks:
+      - internalLoki
+
+  Grafana:
+    image: grafana/grafana:latest
+    ports:
+      - 3000:3000
+    networks:
+      - internalLoki

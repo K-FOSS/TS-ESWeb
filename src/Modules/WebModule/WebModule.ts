@@ -1,36 +1,25 @@
 // src/Modules/WebModule/WebModule.ts
-import { ObjectType, Field } from 'type-graphql';
+import { plainToClass } from 'class-transformer';
+import { IsString, validateOrReject } from 'class-validator';
+import { Field, ObjectType } from 'type-graphql';
+import { Service } from 'typedi';
 
-// const distDir = resolvePath('dist');
-// const mapPath = resolvePath(distDir, 'moduleMap.json');
-
+@Service()
 @ObjectType()
 export class WebModule {
+  @IsString()
   @Field()
   public filePath: string;
 
-  @Field()
+  @Field(() => String)
   public code: string;
 
-  public dependencies = new Set<string>();
+  public static async createWebModule(
+    input: Partial<WebModule>,
+  ): Promise<WebModule> {
+    const webModule = plainToClass(WebModule, input);
+    await validateOrReject(webModule);
 
-  public constructor(opts: Partial<WebModule> = {}) {
-    Object.assign(this, opts);
+    return webModule;
   }
 }
-
-// let mapData: any;
-
-// if (process.env.NODE_ENV === 'production') {
-//   try {
-//     const { promises: fs } = await import('fs');
-
-//     const mapFile = await fs.readFile(mapPath);
-
-//     mapData = JSON.parse(mapFile.toString());
-//   } catch {}
-// }
-
-// type Specifier = string;
-
-// export const moduleMap = new Map<Specifier, WebModule>(mapData);

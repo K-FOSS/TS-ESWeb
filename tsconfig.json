@@ -16,14 +16,15 @@
     "outDir": "dist",
 
     // Source Maps
-    "inlineSourceMap": false,
+    "inlineSourceMap": true,
+
     "lib": ["ESNext", "DOM", "WebWorker"],
 
     // Features
     "experimentalDecorators": true,
     "noEmit": false,
     "emitDecoratorMetadata": true,
-    "jsx": "react-jsxdev"
+    "jsx": "react-jsx"
   },
   "include": ["src/**/*", "bin/**/*"],
   "exclude": ["node_modules"]

@@ -3,4 +3,6 @@ export const objectExport = /^\{$\n(?<coreCode>((?<indent>^\s+)\S+\s+=\s+\{$\n\k
 
 export const processNodeReplacement = /if\s+\(process\.env\.NODE_ENV \S+\s"production"\)\s{\n\s+\(function\(\)\s{\n(?<coreCode>(.*\n?)*)}\)\(\);\n}/gim;
 
-export const exportsHandler = /(^exports\.(?<exports>\S+)(?=\s+=.*$))(?=.*exports\.\k<exports>\s+=)/gmsu;
+export const processNodeIfStatement = /if\s*\(process\.env\.NODE_ENV\s*\S+\s('|")production("|')\)\s*\{(?<coreCode>.*)\}\s*else\s*{.*\}/gims;
+
+export const exportsHandler = /((?<=^|;)exports\.(?<exports>\S+)(?=\s*=.*;))(?=.*exports\.\k<exports>\s*=)/gmsu;

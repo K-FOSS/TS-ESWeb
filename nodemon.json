@@ -1,6 +1,9 @@
 {
+  "$schema": "https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/nodemon.json",
   "watch": ["src"],
   "ext": "ts,tsx",
   "ignore": ["src/**/*.test.ts"],
-  "exec": "npm run start:debug"
+  "exec": "npm run start:debug",
+  "spawn": true,
+  "stdin": false
 }

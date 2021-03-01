@@ -1,6 +1,11 @@
 // src/Routes/Home.tsx
-import React from 'react';
+import { ReactElement } from 'react';
 
-export default function HomeRoute(): React.ReactElement {
-  return <p>HelloWorld</p>;
+export default function HomeRoute(): ReactElement {
+  return (
+    <>
+      <h1>Home Route</h1>
+      <p>HelloWorld</p>
+    </>
+  );
 }

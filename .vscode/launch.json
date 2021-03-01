@@ -8,10 +8,18 @@
       "protocol": "inspector",
       "port": 9229,
       "restart": true,
+      "showAsyncStacks": true,
+      "autoAttachChildProcesses": true,
+      "console": "integratedTerminal",
+      "outputCapture": "std",
+      "sourceMaps": true,
 
       "cwd": "${workspaceFolder}",
-      "runtimeExecutable": "npx",
-      "runtimeArgs": ["nodemon"]
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "start:debug"],
+      "env": {
+        "LOG_LEVEL": "SILLY"
+      }
     }
   ]
 }

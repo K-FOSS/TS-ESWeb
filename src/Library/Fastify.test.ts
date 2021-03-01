@@ -34,18 +34,12 @@ export class FastifyTestSuite extends TestSuite {
       'fastifyRoutes[0].options.method === GET',
     );
 
-    logger.debug(`HelloTest`);
-
     const webServer = fastify();
 
-    logger.debug(`HelloTest`, webServer);
-
     fastifyRoutes.map((route) => {
-      logger.debug(`Fastify Route: `, route);
-
       return webServer.route({
         ...route.options,
-        handler: route.handler,
+        handler: async (...params) => route.handler(...params),
       });
     });
 
