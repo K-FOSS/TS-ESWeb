@@ -1,5 +1,4 @@
 // src/Modules/TypeScript/Utils.test.ts
-/* eslint-disable */
 import { TestSuite } from '@k-foss/ts-estests';
 import { dirname } from 'path';
 import * as ts from 'typescript';
@@ -9,11 +8,12 @@ import { createTypeScriptProgram } from './Utils';
 export class TypeScriptUtilsSuite extends TestSuite {
   public testName = 'TypeScript Utils Test Suite';
 
-  public async relativeFile(): Promsie<void> {
+  public async relativeFile(): Promise<void> {
     const filePathURI = await import.meta.resolve('./TSConfig.ts');
     const filePath = fileURLToPath(filePathURI);
 
-    const program1 = await createTypeScriptProgram({
+    await createTypeScriptProgram({
+      rootNames: [],
       rootDir: filePath,
       compilerOptions: {
         jsxFragmentFactory: 'Fragment',
@@ -30,12 +30,13 @@ export class TypeScriptUtilsSuite extends TestSuite {
     });
   }
 
-  public async relativePath(): Promsie<void> {
+  public async relativePath(): Promise<void> {
     const filePathURI = await import.meta.resolve('./TSConfig.ts');
     const filePath = fileURLToPath(filePathURI);
     const rootDir = dirname(filePath);
 
-    const program1 = await createTypeScriptProgram({
+    await createTypeScriptProgram({
+      rootNames: [],
       rootDir,
       compilerOptions: {
         jsxFragmentFactory: 'Fragment',
