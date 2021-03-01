@@ -125,31 +125,31 @@ export class Queue<QueueName extends string, JobInput> {
   /**
    * Check if there are any active jobs/tasks
    */
-  private async isRunningJobs(): Promise<number[] | void> {
-    const jobCounts = await this.getCounts();
+  // private async isRunningJobs(): Promise<number[] | void> {
+  //   const jobCounts = await this.getCounts();
 
-    this.logger.silly(`jobCounts: `, {
-      jobCounts,
-    });
+  //   this.logger.silly(`jobCounts: `, {
+  //     jobCounts,
+  //   });
 
-    const anyJobs = jobCounts.some((jobCount) => jobCount > 0);
+  //   const anyJobs = jobCounts.some((jobCount) => jobCount > 0);
 
-    if (this.hasRun === false) {
-      if (anyJobs === true) {
-        this.hasRun = true;
-      }
+  //   if (this.hasRun === false) {
+  //     if (anyJobs === true) {
+  //       this.hasRun = true;
+  //     }
 
-      return;
-    }
+  //     return;
+  //   }
 
-    if (anyJobs === false) {
-      this.logger.silly('Terminating workers');
+  //   if (anyJobs === false) {
+  //     this.logger.silly('Terminating workers');
 
-      return this.terminateWorkers();
-    }
-  }
+  //     return this.terminateWorkers();
+  //   }
+  // }
 
-  private handleDrained: () => void;
+  // private handleDrained: () => void;
 
   /**
    * Start watching workers for active tasks and kill workers upon empty Queue
@@ -158,7 +158,7 @@ export class Queue<QueueName extends string, JobInput> {
     if (this.options.disableTermination !== true) {
       let jobLessCounts = 0;
 
-      const helloWorld = async (): Promise<void> => {
+      const helloWorld = async (): Promise<void | number[]> => {
         const jobCounts = await this.getCounts();
 
         const anyJobs = jobCounts.some((jobCount) => jobCount > 0);
@@ -181,6 +181,7 @@ export class Queue<QueueName extends string, JobInput> {
       };
 
       setInterval(() => {
+        // eslint-disable-next-line @typescript-eslint/no-floating-promises
         helloWorld();
       }, 500);
     }

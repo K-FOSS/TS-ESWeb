@@ -4,7 +4,6 @@ import { logger } from '../../Library/Logger';
 import {
   exportsHandler,
   objectExport,
-  processNodeIfStatement,
   processNodeReplacement,
 } from '../TypeScript/Regex';
 
@@ -35,10 +34,11 @@ export function processModule(fileContents: string): string {
     'processNodeReplacement',
   );
 
+  /*
   setModuleContents(
     moduleContents.replace(processNodeIfStatement, '$<coreCode>'),
     'processNodeENVIfStatement',
-  );
+  ); */
 
   setModuleContents(
     moduleContents.replaceAll(
@@ -65,7 +65,10 @@ export function processModule(fileContents: string): string {
   );
 
   setModuleContents(
-    moduleContents.replaceAll('process.env.NODE_ENV', process.env.NODE_ENV),
+    moduleContents.replaceAll(
+      'process.env.NODE_ENV',
+      `'${process.env.NODE_ENV}'`,
+    ),
   );
 
   /**

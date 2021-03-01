@@ -5,13 +5,24 @@ enum LabMode {
   IMPORT_PROP_TYPES = 'importPropTypes',
 }
 
+async function propTypesLab(): Promise<string> {
+  const reactIs = await import('react-is');
+
+  console.log('reactIs', reactIs);
+
+  const helloWorld = require('prop-types/factoryWithTypeCheckers');
+  console.log('HelloWorld', helloWorld);
+
+  return 'testing';
+}
+
 export default function LabRoute(): ReactElement {
   const [lab, setLab] = useState<LabMode>(LabMode.IMPORT_PROP_TYPES);
 
   const runLab = useCallback(async () => {
     switch (lab) {
       case LabMode.IMPORT_PROP_TYPES:
-        console.log(await import('prop-types/factoryWithTypeCheckers'));
+        console.log(await propTypesLab());
     }
   }, [lab]);
 

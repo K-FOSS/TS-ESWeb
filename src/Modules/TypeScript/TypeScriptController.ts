@@ -60,7 +60,7 @@ export class TypeScriptController {
     /**
      * Create the @K-FOSS/TS-ESWorkers.
      */
-    await this.moduleMapQueue.createWorkers(workerPath);
+    await this.moduleMapQueue.createWorkers(workerPath, 2);
 
     logger.debug(
       `TypeScriptController.createModuleMapWorkers() workerPathURI: ${workerPathURI}`,
@@ -78,7 +78,7 @@ export class TypeScriptController {
     );
     const workerPath = fileURLToPath(workerPathURI);
 
-    await this.transpilerQueue.createWorkers(workerPath);
+    await this.transpilerQueue.createWorkers(workerPath, 2);
 
     logger.silly(
       `TypeScriptController.createTranspilerWorkers() workerPathURI: ${workerPathURI}`,

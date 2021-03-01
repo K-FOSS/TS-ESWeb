@@ -21,6 +21,8 @@ import { workerControllerToken } from '../Queues/WorkerController';
 import { workerInputToken } from '../Queues/WorkerInput';
 import { RedisController } from '../Redis/RedisController';
 import { RedisType } from '../Redis/RedisTypes';
+import { WebModule } from '../WebModule';
+import { WebModuleController } from '../WebModule/WebModuleController';
 import { TranspilerWorkerJobInput } from './TranspilerWorkerJobInput';
 
 const logger = coreLogger.child({
@@ -37,6 +39,8 @@ logger.info(`Worker starting`, {
 // const queueController = Container.get(QueueController);
 
 const workerController = Container.get(workerControllerToken);
+
+const webModuleController = Container.get(WebModuleController);
 
 const queueName = Container.get(queueToken);
 const workerInput = Container.get(workerInputToken);
@@ -128,6 +132,11 @@ const transpilerWorker = new Worker<TranspilerWorkerJobInput>(
       key: jobInput.filePath,
       value: sourceText,
     });
+
+    const webModule = await WebModule.createWebModule({
+      filePath: jobInput.filePath,
+    });
+    await webModuleController.setWebModule(webModule);
 
     logger.silly('Done', {
       filePath: jobInput.filePath,

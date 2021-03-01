@@ -13,9 +13,7 @@ import { QueueController } from '../Queues/QueueController';
 import { queueToken } from '../Queues/QueueToken';
 import { workerControllerToken } from '../Queues/WorkerController';
 import { workerInputToken } from '../Queues/WorkerInput';
-import { RedisController } from '../Redis/RedisController';
-import { RedisType } from '../Redis/RedisTypes';
-import { WebModuleMapJobInput } from '../WebModule/WebModuleMapJobInput';
+import { WebModuleController } from '../WebModule/WebModuleController';
 import { ModuleMapWorkerJobInput } from './ModuleMapWorkerJobInput';
 import { TranspilerWorkerJobInput } from './TranspilerWorkerJobInput';
 import { createTypeScriptProgram, isCommonJSImportSplit } from './Utils';
@@ -43,9 +41,7 @@ workerController.logger.silly(`workerInput`, {
   queueName,
 });
 
-const webModuleMapQue = new Queue('webModuleMapQueue', {
-  ...workerInput.queueOptions,
-});
+const webModuleController = Container.get(WebModuleController);
 
 const transpilerQue = new Queue('typescriptTranspiler', {
   ...workerInput.queueOptions,
@@ -54,8 +50,6 @@ const transpilerQue = new Queue('typescriptTranspiler', {
 const moduleMapQue = new Queue(queueName, {
   ...workerInput.queueOptions,
 });
-
-const redisController = Container.get(RedisController);
 
 /**
  * Discover all imported modules and add to the TypeScript Module Map
@@ -122,24 +116,20 @@ async function discoverModuleMap(
       jobId: transpilerJobInput.filePath,
     });
 
-    const specifierCore = moduleInput.specifier || moduleInput.filePath;
-    const specifier = specifierCore.replace(/.(js|ts)x?/, '');
-
-    const webModuleJobInputParams: WebModuleMapJobInput = {
-      filePath: moduleInput.filePath,
-      specifier,
+    await webModuleController.addWebModuleMapJob({
+      ...moduleInput,
       importedModules: [],
-    };
+    });
 
-    await redisController.IORedis.set(
-      redisController.getRedisKey(RedisType.MODULE_MAP, moduleInput.filePath),
-      JSON.stringify(webModuleJobInputParams),
-    );
+    // await redisController.IORedis.set(
+    //   redisController.getRedisKey(RedisType.MODULE_MAP, moduleInput.filePath),
+    //   JSON.stringify(webModuleJobInputParams),
+    // );
 
-    await redisController.IORedis.set(
-      redisController.getRedisKey(RedisType.MODULE_MAP, specifier),
-      JSON.stringify(webModuleJobInputParams),
-    );
+    // await redisController.IORedis.set(
+    //   redisController.getRedisKey(RedisType.MODULE_MAP, specifier),
+    //   JSON.stringify(webModuleJobInputParams),
+    // );
 
     return;
   }
@@ -171,9 +161,6 @@ async function discoverModuleMap(
 
     try {
       const [, outputModule] = resolvedArray.reduce(
-        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-        // @ts-expect-error
-        // eslint-disable-next-line array-callback-return
         (_test, [_filePath, resolvedModule]) => {
           workerController.logger.silly(`resolvedArrayReduce`, {
             _filePath,
@@ -249,7 +236,7 @@ async function discoverModuleMap(
 
       const folderPath = dirname(filePath);
 
-      let packageJSON;
+      let packageJSON: { module?: string };
 
       try {
         const file = await readFile(resolve(folderPath, 'package.json'));
@@ -257,8 +244,10 @@ async function discoverModuleMap(
           file: file.toString(),
         });
 
-        packageJSON = JSON.parse(file.toString());
-      } catch (err) {}
+        packageJSON = JSON.parse(file.toString()) as { module?: string };
+      } catch (err) {
+        packageJSON = {};
+      }
 
       if (isString(packageJSON?.module)) {
         logger.silly(`Testing HelloWorld`, {
@@ -269,15 +258,19 @@ async function discoverModuleMap(
         filePath = resolve(folderPath, packageJSON.module);
       }
 
-      logger.silly('HelloWorld57678', {
-        filePath,
-        test1: compilerProgram.getSourceFile(filePath),
-        packageJSON: packageJSON || 'test',
-      });
-
       let moduleSpecifier: string;
       if (ts.isExternalModuleNameRelative(specifier)) {
-        moduleSpecifier = filePath;
+        logger.silly('Module is external relative', {
+          specifier,
+          filePath,
+          _test,
+          newSpecifier: _test.packageId?.name
+            ? `${_test.packageId.name}/${_test.packageId.subModuleName}`
+            : filePath,
+        });
+        moduleSpecifier = _test.packageId?.name
+          ? `${_test.packageId.name}/${_test.packageId.subModuleName}`
+          : filePath;
       } else {
         moduleSpecifier = specifier;
       }
@@ -310,57 +303,20 @@ async function discoverModuleMap(
     }),
   );
 
-  const specifierCore = moduleInput.specifier || moduleInput.filePath;
-  let specifier = specifierCore.replace(/\.(js|ts)x?/, '');
-
-  const webModuleJobInputParams: WebModuleMapJobInput = {
-    filePath: moduleInput.filePath,
-    specifier,
+  await webModuleController.addWebModuleMapJob({
+    ...moduleInput,
     importedModules: importedModules.filter(Boolean) as string[],
-  };
-
-  moduleMapLogger.silly(`webModuleJobInputParams`, {
-    webModuleJobInputParams,
   });
 
-  const [webModuleJobInput, transpilerJobInput] = await Promise.all([
-    WebModuleMapJobInput.createWebModuleJobInput(webModuleJobInputParams),
-    TranspilerWorkerJobInput.createTranspilerWorkerJobInput({
+  const transpilerJobInput = await TranspilerWorkerJobInput.createTranspilerWorkerJobInput(
+    {
       filePath: moduleInput.filePath,
-    }),
-  ]);
-
-  moduleMapLogger.silly(`discoverModuleMap(${JSON.stringify(moduleInput)})`, {
-    webModuleJobInput,
-  });
-
-  await redisController.IORedis.set(
-    redisController.getRedisKey(RedisType.MODULE_MAP, moduleInput.filePath),
-    JSON.stringify(webModuleJobInputParams),
+    },
   );
-
-  await redisController.IORedis.set(
-    redisController.getRedisKey(RedisType.MODULE_MAP, specifier),
-    JSON.stringify(webModuleJobInputParams),
-  );
-
-  if (specifier.endsWith('/index')) {
-    specifier = specifier.replace('/index', '');
-  }
-
-  await redisController.IORedis.set(
-    redisController.getRedisKey(RedisType.MODULE_MAP, specifier),
-    JSON.stringify(webModuleJobInputParams),
-  );
-
-  await webModuleMapQue.add('webModuleMapQueue', webModuleJobInput, {
-    jobId: webModuleJobInput.filePath,
-  });
 
   workerController.logger.silly(`Creating Transpiler Task`, {
     jobId: transpilerJobInput.filePath,
     transpilerJobInput,
-    specifier,
   });
 
   await transpilerQue.add('typescriptTranspiler', transpilerJobInput, {

@@ -1,7 +1,14 @@
 // src/Modules/WebModules/WebModuleResolver.ts
-import { Arg, Field, InputType, Query, Resolver } from 'type-graphql';
+import {
+  Arg,
+  Field,
+  FieldResolver,
+  InputType,
+  Query,
+  Resolver,
+  Root,
+} from 'type-graphql';
 import { Inject, Service } from 'typedi';
-import { logger } from '../../Library/Logger';
 import { RedisController } from '../Redis/RedisController';
 import { RedisType } from '../Redis/RedisTypes';
 import { ServerOptions, serverOptionsToken } from '../Server/ServerOptions';
@@ -14,11 +21,14 @@ class WebModuleFilter {
   public specifier: string;
 }
 
-@Resolver()
 @Service()
+@Resolver(() => WebModule)
 export class WebModuleResolver {
   @Inject(() => RedisController)
-  public redisController: RedisController;
+  private redisController: RedisController;
+
+  @Inject(() => WebModuleController)
+  public webModuleController: WebModuleController;
 
   @Inject(serverOptionsToken)
   public options: ServerOptions;
@@ -27,32 +37,15 @@ export class WebModuleResolver {
   public async webModule(
     @Arg('filter', () => WebModuleFilter) input: WebModuleFilter,
   ): Promise<WebModule> {
-    logger.silly(`WebModuleResolver.webModule(${input.specifier})`);
-
-    const webModuleMapString = await this.redisController.getValue(
-      RedisType.MODULE_MAP,
+    const webModule = await this.webModuleController.getWebModule(
       input.specifier,
     );
 
-    const webModuleMap = JSON.parse(webModuleMapString);
+    return webModule;
+  }
 
-    logger.silly(`WebModuleResolver`, {
-      webModuleMap,
-    });
-
-    const webModuleCode = await this.redisController.getValue(
-      RedisType.MODULE,
-      webModuleMap?.filePath,
-    );
-
-    logger.silly(`WebModuleResolver`, {
-      webModuleMap,
-      webModuleCode,
-    });
-
-    return {
-      code: webModuleCode,
-      filePath: '/test',
-    };
+  @FieldResolver(() => String)
+  public async code(@Root() { filePath }: WebModule): Promise<string> {
+    return this.redisController.getValueOrThrow(RedisType.MODULE, filePath);
   }
 }

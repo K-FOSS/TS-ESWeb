@@ -1,4 +1,5 @@
 // src/Modules/TypeScript/Utils.test.ts
+/* eslint-disable */
 import { TestSuite } from '@k-foss/ts-estests';
 import { dirname } from 'path';
 import * as ts from 'typescript';

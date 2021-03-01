@@ -1,51 +1,90 @@
 // src/Modules/WebModule/WebModuleWorker.ts
-import { getWorkerData } from '@k-foss/ts-worker';
-import '../../Utils/Setup';
-import { threadId } from 'worker_threads';
-import { logger as coreLogger } from '../../Library/Logger';
 import { Queue, Worker } from 'bullmq';
-import { WorkerInput } from '../Queues/WorkerInput';
-import { WebModuleMapJobInput } from './WebModuleMapJobInput';
+import { Container } from 'typedi';
+import { threadId } from 'worker_threads';
+import { logger } from '../../Library/Logger';
+import '../../Utils/Setup';
 import { timeout } from '../../Utils/timeout';
+import { queueToken } from '../Queues/QueueToken';
+import { workerControllerToken } from '../Queues/WorkerController';
+import { workerInputToken } from '../Queues/WorkerInput';
 import { RedisController } from '../Redis/RedisController';
+import { WebModuleController } from './WebModuleController';
 import { WebModuleJobInput } from './WebModuleJobInput';
+import { WebModuleMapJobInput } from './WebModuleMapJobInput';
+import { WebModuleReference } from './WebModuleReference';
 
-const logger = coreLogger.child({
-  labels: { worker: 'WebModuleWorker.ts', workeId: threadId },
+const workerController = Container.get(workerControllerToken);
+const queueName = Container.get(queueToken);
+const workerInput = Container.get(workerInputToken);
+
+const webModuleController = Container.get(WebModuleController);
+
+workerController.logger.info(`Worker starting`, {
+  worker: 'TypeScriptTranspilerWorker.ts',
+  workeId: threadId,
 });
 
-logger.info(`Worker starting`);
+workerController.logger.info(`Worker starting`);
 
-const workerInput = await WorkerInput.createWorkerInput(
-  getWorkerData(import.meta.url),
-);
+const redisController = Container.get(RedisController);
 
-logger.debug(`Retrieved workerData:`, {
+workerController.logger.debug(`Retrieved workerData:`, {
   objectName: 'workerInput',
   workerInput,
 });
 
-const redisController = new RedisController({
-  ...(workerInput.queueOptions.connection as { host: string }),
-});
-
-const webModuleMapQue = new Queue(workerInput.queName, {
+const webModuleMapQue = new Queue(queueName, {
   ...workerInput.queueOptions,
 });
 
-const webModuleQue = new Queue('webModuleQueue', {
-  ...workerInput.queueOptions,
-});
-
-logger.silly(`webModuleQue has been created`, {
+workerController.logger.silly(`webModuleQue has been created`, {
   webModuleMapQue,
 });
+
+function getModuleAlias(filePath: string): string[] {
+  const strippedFilePath = filePath.replace(/\.(js|ts)x?/, '');
+
+  const aliases: string[] = [strippedFilePath];
+
+  if (strippedFilePath.endsWith('/index')) {
+    aliases.push(strippedFilePath.replace('/index', ''));
+  }
+
+  return aliases;
+}
 
 const moduleMapWorker = new Worker<WebModuleMapJobInput>(
   workerInput.queName,
   async (job) => {
-    logger.silly(`New Web Module Map Job:`, {
+    workerController.logger.silly(`New Web Module Map Job:`, {
       data: job.data,
+    });
+
+    const jobData = await WebModuleMapJobInput.createWebModuleJobInput(
+      job.data,
+    );
+
+    const aliases = [...getModuleAlias(jobData.filePath), jobData.specifier];
+
+    workerController.logger.silly(`webModule Aliases`, {
+      aliases,
+    });
+
+    await Promise.all(
+      aliases.filter(Boolean).map(async (alias) => {
+        const webModuleAlias = await WebModuleReference.createWebModuleReference(
+          {
+            specifier: alias,
+            webModuleId: jobData.filePath,
+          },
+        );
+        return webModuleController.setWebModule(webModuleAlias);
+      }),
+    );
+
+    logger.silly('Web Module Map jobData', {
+      jobData,
     });
 
     await timeout(60);
@@ -55,14 +94,14 @@ const moduleMapWorker = new Worker<WebModuleMapJobInput>(
   },
 );
 
-logger.silly(`moduleMapWorker`, {
+workerController.logger.silly(`moduleMapWorker`, {
   moduleMapWorker,
 });
 
 const moduleWorker = new Worker<WebModuleMapJobInput>(
   'webModuleQueue',
   async (job) => {
-    logger.silly(`New Web Module Job:`, {
+    workerController.logger.silly(`New Web Module Job:`, {
       data: job.data.filePath,
     });
 
@@ -75,6 +114,6 @@ const moduleWorker = new Worker<WebModuleMapJobInput>(
   },
 );
 
-logger.silly(`moduleWorker`, {
+workerController.logger.silly(`moduleWorker`, {
   moduleWorker,
 });
